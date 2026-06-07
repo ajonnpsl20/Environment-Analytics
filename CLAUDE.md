@@ -367,6 +367,18 @@ Run the checklist physically; don't trust memory.
 
 ---
 
+## Post-PoC: Authentication & user lifecycle (NOT for PoC — captured for Phase 3)
+
+The PoC uses a NextAuth credentials provider with seeded users sharing the demo password `demo1234`. That is a demo convenience only. For a real deployment:
+
+- **Per-user credentials, not shared.** `User.hashedPassword` is already per-row; the shared demo password exists only in `seed.ts`. Real users each have their own credential.
+- **Preferred path — corporate SSO (OIDC/SAML).** The identity provider (Entra/Azure AD, Okta, Google Workspace) owns passwords, MFA, complexity, lockout. EnviroHub stores no passwords. NextAuth v5's `providers` array makes this an additive change — the session/JWT callbacks, `permissions.ts`, and pages stay unchanged; only the provider + a claims→`Role` mapping are added.
+- **Onboarding (SSO):** IT adds the joiner to an IdP group → on first SSO login EnviroHub just-in-time provisions the `User` row and maps the group/claim to a `Role`. Offboarding/role-change handled in the IdP.
+- **Onboarding (local accounts, no SSO):** build the System-Admin-only **Manage users** screen (already in the permissions matrix). Admin creates the user + role + site assignments; the user receives an invite email with a one-time set-password link (or a forced first-login reset). Never an admin-known shared password. Add an `active`/`disabledAt` flag on `User` and check it in `authorize()` for deactivation.
+- **Role changes & sessions:** sessions are JWT, so a role change doesn't take effect until the token expires or the user re-logs in. In production set a sensible session `maxAge` or re-check role from DB/IdP for sensitive actions.
+
+---
+
 ## Glossary
 
 - **WTN** — Waste Transfer Note. UK regulatory document tracking waste handover between producer and carrier. PDF attachment expected per waste record.
