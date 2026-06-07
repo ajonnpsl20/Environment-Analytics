@@ -1,0 +1,255 @@
+// EnviroHub PoC — Prisma schema
+// Data model per CLAUDE.md "Data model (Prisma schema)" section.
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Enums
+// ─────────────────────────────────────────────────────────────────────────────
+
+enum Role {
+  SystemAdmin
+  SiteAdmin
+  DataEntryUser
+}
+
+enum RecordStatus {
+  SUBMITTED
+  APPROVED
+  REJECTED
+  RETURNED
+}
+
+enum WasteType {
+  HAZARDOUS
+  NON_HAZARDOUS
+  RECYCLABLE
+}
+
+enum WaterSource {
+  MAINS
+  BOREHOLE
+  RAINWATER
+  SURFACE_WATER
+  RECYCLED
+  OTHER
+}
+
+enum MeasurementMethod {
+  CONTINUOUS
+  PERIODIC
+  CALCULATED
+  ESTIMATED
+}
+
+enum AuditAction {
+  CREATED
+  SUBMITTED
+  APPROVED
+  REJECTED
+  RETURNED
+  EDITED
+  DELETED
+  IMPORTED
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Core entities
+// ─────────────────────────────────────────────────────────────────────────────
+
+model User {
+  id             String   @id @default(cuid())
+  email          String   @unique
+  name           String
+  hashedPassword String
+  role           Role     @default(DataEntryUser)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  siteAssignments SiteAssignment[]
+
+  airEmissionsSubmitted AirEmissionRecord[] @relation("AirEmissionSubmittedBy")
+  airEmissionsApproved  AirEmissionRecord[] @relation("AirEmissionApprovedBy")
+  wasteSubmitted        WasteRecord[]       @relation("WasteSubmittedBy")
+  wasteApproved         WasteRecord[]       @relation("WasteApprovedBy")
+  waterSubmitted        WaterUsageRecord[]  @relation("WaterSubmittedBy")
+  waterApproved         WaterUsageRecord[]  @relation("WaterApprovedBy")
+  electricitySubmitted  ElectricityRecord[] @relation("ElectricitySubmittedBy")
+  electricityApproved   ElectricityRecord[] @relation("ElectricityApprovedBy")
+
+  auditLogs AuditLog[]
+}
+
+model Site {
+  id              String   @id @default(cuid())
+  siteId          String   @unique
+  name            String
+  address         String
+  country         String   @default("United Kingdom")
+  operationalType String
+  latitude        Float?
+  longitude       Float?
+  createdAt       DateTime @default(now())
+
+  siteAssignments    SiteAssignment[]
+  airEmissionRecords AirEmissionRecord[]
+  wasteRecords       WasteRecord[]
+  waterUsageRecords  WaterUsageRecord[]
+  electricityRecords ElectricityRecord[]
+}
+
+model SiteAssignment {
+  id     String @id @default(cuid())
+  userId String
+  siteId String
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  site Site @relation(fields: [siteId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@unique([userId, siteId])
+  @@index([siteId])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Metric records — the four data-entry modules
+// ─────────────────────────────────────────────────────────────────────────────
+
+model AirEmissionRecord {
+  id                 String            @id @default(cuid())
+  siteId             String
+  stackId            String
+  measuredAt         DateTime
+  pollutantType      String
+  concentration      Float
+  concentrationUnit  String
+  flowRate           Float?
+  totalEmissions     Float?
+  measurementMethod  MeasurementMethod
+  equipmentReference String?
+  status             RecordStatus      @default(SUBMITTED)
+  submittedById      String
+  approvedById       String?
+  approvedAt         DateTime?
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
+
+  site        Site  @relation(fields: [siteId], references: [id])
+  submittedBy User  @relation("AirEmissionSubmittedBy", fields: [submittedById], references: [id])
+  approvedBy  User? @relation("AirEmissionApprovedBy", fields: [approvedById], references: [id])
+
+  @@index([siteId])
+  @@index([status])
+  @@index([measuredAt])
+}
+
+model WasteRecord {
+  id               String       @id @default(cuid())
+  siteId           String
+  wasteType        WasteType
+  streamCategory   String
+  weightKg         Float
+  disposalMethod   String
+  contractor       String
+  wtnReference     String
+  transferDate     DateTime
+  wtnDocumentR2Key String?
+  status           RecordStatus @default(SUBMITTED)
+  submittedById    String
+  approvedById     String?
+  approvedAt       DateTime?
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+
+  site        Site  @relation(fields: [siteId], references: [id])
+  submittedBy User  @relation("WasteSubmittedBy", fields: [submittedById], references: [id])
+  approvedBy  User? @relation("WasteApprovedBy", fields: [approvedById], references: [id])
+
+  @@index([siteId])
+  @@index([status])
+  @@index([transferDate])
+}
+
+model WaterUsageRecord {
+  id            String       @id @default(cuid())
+  siteId        String
+  meterId       String
+  readingStart  Float
+  readingEnd    Float
+  consumptionM3 Float
+  source        WaterSource
+  periodStart   DateTime
+  periodEnd     DateTime
+  status        RecordStatus @default(SUBMITTED)
+  submittedById String
+  approvedById  String?
+  approvedAt    DateTime?
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  site        Site  @relation(fields: [siteId], references: [id])
+  submittedBy User  @relation("WaterSubmittedBy", fields: [submittedById], references: [id])
+  approvedBy  User? @relation("WaterApprovedBy", fields: [approvedById], references: [id])
+
+  @@index([siteId])
+  @@index([status])
+  @@index([periodStart])
+}
+
+model ElectricityRecord {
+  id                String       @id @default(cuid())
+  siteId            String
+  meterId           String
+  consumptionKwh    Float
+  peakKwh           Float?
+  offPeakKwh        Float?
+  renewablePercent  Float?
+  supplier          String?
+  periodStart       DateTime
+  periodEnd         DateTime
+  status            RecordStatus @default(SUBMITTED)
+  submittedById     String
+  approvedById      String?
+  approvedAt        DateTime?
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+
+  site        Site  @relation(fields: [siteId], references: [id])
+  submittedBy User  @relation("ElectricitySubmittedBy", fields: [submittedById], references: [id])
+  approvedBy  User? @relation("ElectricityApprovedBy", fields: [approvedById], references: [id])
+
+  @@index([siteId])
+  @@index([status])
+  @@index([periodStart])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Audit log
+// ─────────────────────────────────────────────────────────────────────────────
+
+model AuditLog {
+  id         String      @id @default(cuid())
+  entityType String
+  entityId   String
+  action     AuditAction
+  userId     String
+  timestamp  DateTime    @default(now())
+  beforeJson Json?
+  afterJson  Json?
+  notes      String?
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([entityType, entityId])
+  @@index([userId])
+  @@index([timestamp])
+}
