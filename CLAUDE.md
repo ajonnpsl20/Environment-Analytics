@@ -64,11 +64,11 @@ When the user asks for something on this OUT list, push back with a brief remind
 
 | Layer | Choice | Notes |
 |---|---|---|
-| Frontend / API | Next.js 15 (App Router) | TypeScript, React Server Components where natural |
-| Styling | Tailwind CSS v4 + shadcn/ui | Use shadcn primitives; avoid building from scratch |
+| Frontend / API | Next.js 16 (App Router) | TypeScript, React Server Components where natural |
+| Styling | Tailwind CSS v4 + shadcn/ui (Base UI) | Use shadcn primitives; avoid building from scratch. shadcn now ships on `@base-ui/react`, not Radix |
 | Charts | Recharts | Line + Bar only at PoC |
 | Database | Neon Postgres (EU region — Frankfurt or Dublin) | Free tier; serverless; scale-to-zero OK |
-| ORM | Prisma | Schema-first; migrations in `prisma/migrations` |
+| ORM | Prisma 6 (pinned) | Schema-first; migrations in `prisma/migrations`. Pinned to v6 — do NOT upgrade to v7 (it requires runtime driver adapters and forbids `url` in schema) without re-discussing |
 | Auth | NextAuth v5 (Auth.js) credentials provider | Hardcoded users in PoC; OIDC/SAML provider drop-in later |
 | File storage | Cloudflare R2 | For Waste Transfer Note attachments; S3-compatible SDK |
 | Excel I/O | SheetJS (`xlsx` npm package) | Both import and export |
@@ -80,6 +80,17 @@ When the user asks for something on this OUT list, push back with a brief remind
 | Icons | lucide-react | Already used by shadcn/ui |
 
 **Total monthly cost during PoC: $0.**
+
+### Toolchain notes (actual, post-bootstrap)
+
+The bootstrap used `@latest` tooling, which drifted from the original plan. The repo as built reflects:
+
+- **Next.js 16** (not 15). App Router patterns are unchanged.
+- **Prisma 6, pinned.** `generator client { provider = "prisma-client-js" }` + `url = env("DATABASE_URL")` in `schema.prisma`; import the client from `@prisma/client`. Do not bump to Prisma 7.
+- **shadcn/ui on Base UI** (`@base-ui/react`). The registry's `form` item ships no files, so `src/components/ui/form.tsx` is the canonical React-Hook-Form wrapper, added manually (depends on `@radix-ui/react-slot`).
+- **Env loading:** all secrets live in `.env.local` (gitignored). Prisma 6 only auto-loads `.env`, so the `db:*` npm scripts wrap Prisma with `dotenv -e .env.local --` (dotenv-cli). Next.js loads `.env.local` natively. There is no `.env` or `prisma.config.ts`.
+- **DB workflow via npm scripts:** `npm run db:migrate`, `db:seed`, `db:reset`, `db:studio`, `db:generate` (and `postinstall` runs `prisma generate` for Vercel builds).
+- Actual config files: `next.config.ts` (not `.mjs`); Tailwind v4 is configured in CSS (`globals.css`), so there is no `tailwind.config.ts`.
 
 ---
 
@@ -151,6 +162,8 @@ envirohub/
 ---
 
 ## Data model (Prisma schema)
+
+> **`prisma/schema.prisma` is the source of truth** for exact field names/types. The list below is the conceptual model; where it differs (e.g. `weightKg`, `consumptionM3`, `consumptionKwh`, `Site.address`), defer to the schema.
 
 The core entities follow the PDF spec, simplified for PoC scope:
 
@@ -314,7 +327,7 @@ Demo login passwords are `demo1234` for all three users.
 When picking up a new task in this project:
 
 1. **Check this file first.** Confirm task is within PoC scope. If unclear, ASK the operator before building.
-2. **Run `prisma generate` and `prisma migrate dev`** after any schema change. Don't skip.
+2. **Run `npm run db:generate` and `npm run db:migrate`** after any schema change (these wrap Prisma with dotenv-cli so `.env.local` is loaded). Don't skip.
 3. **Run `npm run lint` and `npm run typecheck`** before declaring a task complete.
 4. **Write seed data** for any new entity so demos still work.
 5. **Update this file** when project decisions change (don't let it go stale).
@@ -367,4 +380,4 @@ Run the checklist physically; don't trust memory.
 
 ---
 
-*Last updated: project initialization. Update this date when material decisions change.*
+*Last updated: 2026-06-08 — post-bootstrap toolchain reconciliation (Next 16, Prisma 6 pinned, shadcn on Base UI, .env.local + dotenv-cli env wiring). Update this date when material decisions change.*
