@@ -23,7 +23,8 @@ import {
 
 const DEMO_ACCOUNTS = [
   { label: "System Admin", email: "admin@envirohub.demo" },
-  { label: "Site Admin", email: "siteadmin@envirohub.demo" },
+  { label: "Site Admin – England", email: "siteadmin@envirohub.demo" },
+  { label: "Site Admin – Scotland & Wales", email: "siteadmin2@envirohub.demo" },
   { label: "Data Entry", email: "data@envirohub.demo" },
 ] as const;
 
