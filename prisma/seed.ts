@@ -102,16 +102,36 @@ const SITES = [
 ] as const;
 
 const SITE_IDS = SITES.map((s) => s.id);
-// Data Entry User is assigned to Manchester + Birmingham only.
-const DATA_USER_SITES = new Set(["site-manchester", "site-birmingham"]);
 
 const USER_ADMIN = "user-admin";
 const USER_SITEADMIN = "user-siteadmin";
+const USER_SITEADMIN2 = "user-siteadmin2";
 const USER_DATA = "user-data";
+// Service account that SAP-connector-imported records are attributed to.
+const USER_SYSTEM = "user-system";
 
-// Who submits a record at a given site (Data User for their sites, else Site Admin).
-const submitterFor = (siteId: string): string =>
-  DATA_USER_SITES.has(siteId) ? USER_DATA : USER_SITEADMIN;
+// Per-site assignments — deliberately split so the SystemAdmin↔SiteAdmin scope
+// difference is visible in the demo (each Site Admin sees only their region).
+const SITEADMIN_SITES = new Set([
+  "site-manchester",
+  "site-birmingham",
+  "site-london",
+]); // Site Admin – England
+const SITEADMIN2_SITES = new Set(["site-glasgow", "site-cardiff"]); // Site Admin – Scotland & Wales
+// Data Entry User is assigned to Manchester + Birmingham only.
+const DATA_USER_SITES = new Set(["site-manchester", "site-birmingham"]);
+
+// Who submits a record at a given site — always a user assigned to that site, so
+// each role's scoped views (dashboards, approvals, audit) stay coherent.
+const submitterFor = (siteId: string): string => {
+  if (DATA_USER_SITES.has(siteId)) return USER_DATA;
+  if (SITEADMIN2_SITES.has(siteId)) return USER_SITEADMIN2;
+  return USER_SITEADMIN; // London (+ any other England site)
+};
+
+// Who approves/returns/rejects a record at a given site (a Site Admin for it).
+const approverFor = (siteId: string): string =>
+  SITEADMIN2_SITES.has(siteId) ? USER_SITEADMIN2 : USER_SITEADMIN;
 
 const POLLUTANTS: Record<string, [number, number]> = {
   CO2: [10000, 50000],
@@ -213,15 +233,16 @@ function workflow(
 
   let approvedById: string | null = null;
   let approvedAt: Date | null = null;
+  const reviewer = approverFor(siteId);
 
   if (status === RecordStatus.APPROVED) {
-    approvedById = USER_SITEADMIN;
+    approvedById = reviewer;
     approvedAt = addDays(createdAt, randInt(1, 7));
     auditRows.push({
       entityType,
       entityId,
       action: AuditAction.APPROVED,
-      userId: USER_SITEADMIN,
+      userId: reviewer,
       timestamp: approvedAt,
       notes: null,
     });
@@ -230,7 +251,7 @@ function workflow(
       entityType,
       entityId,
       action: AuditAction.RETURNED,
-      userId: USER_SITEADMIN,
+      userId: reviewer,
       timestamp: addDays(createdAt, randInt(1, 5)),
       notes: "Please re-check the meter/equipment reference and resubmit.",
     });
@@ -239,7 +260,7 @@ function workflow(
       entityType,
       entityId,
       action: AuditAction.REJECTED,
-      userId: USER_SITEADMIN,
+      userId: reviewer,
       timestamp: addDays(createdAt, randInt(1, 5)),
       notes: "Duplicate of an existing record.",
     });
@@ -252,6 +273,7 @@ async function main() {
   console.error("Seeding EnviroHub demo data…");
 
   // Clean slate so demos are repeatable.
+  await prisma.connectorSync.deleteMany();
   await prisma.auditLog.deleteMany();
   await prisma.airEmissionRecord.deleteMany();
   await prisma.wasteRecord.deleteMany();
@@ -278,7 +300,14 @@ async function main() {
       {
         id: USER_SITEADMIN,
         email: "siteadmin@envirohub.demo",
-        name: "Site Administrator",
+        name: "Site Administrator – England",
+        hashedPassword,
+        role: Role.SiteAdmin,
+      },
+      {
+        id: USER_SITEADMIN2,
+        email: "siteadmin2@envirohub.demo",
+        name: "Site Administrator – Scotland & Wales",
         hashedPassword,
         role: Role.SiteAdmin,
       },
@@ -289,13 +318,22 @@ async function main() {
         hashedPassword,
         role: Role.DataEntryUser,
       },
+      {
+        id: USER_SYSTEM,
+        email: "system@envirohub.demo",
+        name: "SAP Connector (System)",
+        hashedPassword,
+        role: Role.SystemAdmin,
+      },
     ],
   });
 
-  // Site assignments: Site Admin → all sites, Data User → Manchester + Birmingham
+  // Site assignments — two regional Site Admins (non-overlapping) so the per-site
+  // scope difference vs SystemAdmin is visible; Data User → Manchester + Birmingham.
   await prisma.siteAssignment.createMany({
     data: [
-      ...SITE_IDS.map((siteId) => ({ userId: USER_SITEADMIN, siteId })),
+      ...[...SITEADMIN_SITES].map((siteId) => ({ userId: USER_SITEADMIN, siteId })),
+      ...[...SITEADMIN2_SITES].map((siteId) => ({ userId: USER_SITEADMIN2, siteId })),
       ...[...DATA_USER_SITES].map((siteId) => ({ userId: USER_DATA, siteId })),
     ],
   });
@@ -399,10 +437,22 @@ async function main() {
   // Audit log (accumulated during record generation)
   await prisma.auditLog.createMany({ data: auditRows });
 
+  // Pre-seed a realistic "last sync" for the SAP connector (Air Emissions only;
+  // the other metrics have no descriptor yet, so they read as "never synced").
+  const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000);
+  await prisma.connectorSync.create({
+    data: {
+      connectorKey: "sap",
+      metricKey: "airEmission",
+      lastSyncAt: yesterday,
+      lastCreated: 18,
+    },
+  });
+
   const total =
     airRows.length + wasteRows.length + waterRows.length + elecRows.length;
   console.error(
-    `Seed complete: ${SITES.length} sites, 3 users, ${total} metric records ` +
+    `Seed complete: ${SITES.length} sites, 5 users, ${total} metric records ` +
       `(${airRows.length} air, ${wasteRows.length} waste, ${waterRows.length} water, ` +
       `${elecRows.length} electricity), ${auditRows.length} audit-log entries.`,
   );

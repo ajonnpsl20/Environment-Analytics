@@ -37,7 +37,9 @@ export default function RootLayout({
       lang="en"
       className={`${publicSans.variable} ${bricolage.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="flex min-h-full flex-col">
+      {/* Browser extensions inject attributes (bis_register, __processed_*) onto
+          <body> before hydration; suppress the resulting attribute mismatch. */}
+      <body className="flex min-h-full flex-col" suppressHydrationWarning>
         {children}
         <Toaster richColors position="top-right" />
       </body>

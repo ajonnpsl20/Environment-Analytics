@@ -2,7 +2,7 @@
 
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 
-import { Input } from "@/components/ui/input";
+import { DatePicker } from "@/components/ui/date-picker";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -111,20 +111,22 @@ export function AuditFilters({
       </Field>
 
       <Field label="From">
-        <Input
-          type="date"
+        <DatePicker
           className="w-40"
+          placeholder="Any"
+          clearable
           value={params.get("from") ?? ""}
-          onChange={(e) => setParam("from", e.target.value)}
+          onChange={(v) => setParam("from", v)}
         />
       </Field>
 
       <Field label="To">
-        <Input
-          type="date"
+        <DatePicker
           className="w-40"
+          placeholder="Any"
+          clearable
           value={params.get("to") ?? ""}
-          onChange={(e) => setParam("to", e.target.value)}
+          onChange={(v) => setParam("to", v)}
         />
       </Field>
 

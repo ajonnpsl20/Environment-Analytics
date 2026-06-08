@@ -18,6 +18,26 @@ Open [http://localhost:3000](http://localhost:3000) with your browser to see the
 
 You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 
+## WTN attachments (Cloudflare R2) — optional
+
+Waste records can carry a Waste Transfer Note PDF stored in Cloudflare R2. This is
+**optional**: with the `R2_*` vars blank the app runs fully and the Waste form shows
+"file storage isn't configured" — records save without a file. Filling all four of
+`R2_ACCOUNT_ID` / `R2_ACCESS_KEY_ID` / `R2_SECRET_ACCESS_KEY` / `R2_BUCKET_NAME` in
+`.env.local` activates uploads automatically.
+
+Uploads go **browser → R2 directly** via a presigned PUT URL, so the bucket also needs
+a one-time **CORS rule** (Cloudflare dashboard → your bucket → Settings → CORS policy):
+
+```json
+[{ "AllowedOrigins": ["http://localhost:3000", "https://<your-vercel-url>"],
+   "AllowedMethods": ["PUT", "GET"],
+   "AllowedHeaders": ["content-type"] }]
+```
+
+Without the CORS rule, uploads fail in the browser even when the credentials are correct.
+See `.env.example` for the full variable list.
+
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 
 ## Learn More

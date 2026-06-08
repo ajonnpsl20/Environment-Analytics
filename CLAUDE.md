@@ -243,6 +243,8 @@ The pitch narrative: "Here's the connector pattern. Real SAP integration plugs i
 
 **Do not pretend the connector is real to the user.** The UI says "SAP ERP — Production (Demo)" with a small badge. Honesty here protects credibility during the pitch.
 
+**As built.** `src/data/sap-mock.json` is keyed by metric descriptor key (`airEmission`, `waste`, `water`, …) so the feed's scope is open-ended — it may carry any subset of metrics. The connector page renders one row per key found in the feed with a **per-metric "Sync now" button**; only keys with a registered import descriptor sync (today: `airEmission`), and unregistered keys render "Not configured" so the cross-metric design is visible. Sync hits `POST /api/connectors/sap?metric=<key>`, creates records attributed to a seeded `system@envirohub.demo` SystemAdmin service account (audit `userId` = the admin who clicked, `notes: "via SAP connector (Demo)"`). "Last sync" is persisted per `(connectorKey, metricKey)` in the **`ConnectorSync`** table (records the sync event even on a zero-row pull, unlike deriving it from the audit log); seed pre-populates a realistic value.
+
 ---
 
 ## Dashboards
@@ -280,6 +282,8 @@ Design dashboards to support **multiple charts per metric** even though we ship 
 2. Clicks "Export to Excel" or "Export to CSV"
 3. Server endpoint receives same filter query → streams the filtered records to a SheetJS workbook (Excel) or CSV
 4. Filename: `envirohub-{metric}-{YYYY-MM-DD}.xlsx`
+
+**As built.** Import + connector share a **per-metric descriptor registry** in `src/lib/import/` (`types.ts`, `metric-keys.ts`, `registry.ts`, `engine.ts`, `descriptors/<metric>.ts`). Each descriptor declares its template columns (header↔field, `siteRef` marks the human `Site.siteId` column), a `normalize(raw)` that resolves the site code → `Site.id` and validates with the metric's existing server Zod schema, and a `create()`. The shared `engine.ts` (`validateRows` / `commitRows`) powers both the manual import routes (`/api/import/[metric]`, `…/commit`, `…/template`, `…/error-report`) and the SAP connector. Adding Waste/Water/Electricity = author one descriptor + one registry line; no engine changes. Manual import is two-step (validate → preview → commit); commit re-validates server-side and re-checks site access (never trusts the client). The reusable UI is `src/components/data-entry/import-dialog.tsx`, keyed by `metricKey`.
 
 ---
 
@@ -392,4 +396,4 @@ The PoC uses a NextAuth credentials provider with seeded users sharing the demo 
 
 ---
 
-*Last updated: 2026-06-08 — post-bootstrap toolchain reconciliation (Next 16, Prisma 6 pinned, shadcn on Base UI, .env.local + dotenv-cli env wiring). Update this date when material decisions change.*
+*Last updated: 2026-06-08 — all four PoC metrics now live: Air Emissions, Waste (R2-gated WTN attachments), Water, and Electricity (2-chart dashboard: kWh bars + renewable-% line). Water/Electricity are clones plugged into the import + approvals + SAP-connector registries (one descriptor + one registry line each); approvals/connectors pages are fully registry-driven. Earlier same-day: bulk import + SAP connector on the per-metric import registry (`src/lib/import/`) + `ConnectorSync` table + `system@envirohub.demo` service account; post-bootstrap toolchain reconciliation (Next 16, Prisma 6 pinned, shadcn on Base UI, .env.local + dotenv-cli). Update this date when material decisions change.*

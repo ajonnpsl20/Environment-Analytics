@@ -1,8 +1,16 @@
 import type { Metadata } from "next";
-import { Building2, Database, Hourglass, ScrollText } from "lucide-react";
+import Link from "next/link";
+import {
+  Building2,
+  Database,
+  Hourglass,
+  ScrollText,
+  type LucideIcon,
+} from "lucide-react";
 
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
+import { can } from "@/lib/permissions";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 export const metadata: Metadata = { title: "Dashboard" };
@@ -38,8 +46,19 @@ export default async function DashboardPage() {
 
   const totalRecords = air + waste + water + elec;
   const pending = pendingAir + pendingWaste + pendingWater + pendingElec;
+  const canApprove = session?.user
+    ? can(session.user.role, "approve_records")
+    : false;
 
-  const kpis = [
+  type Kpi = {
+    label: string;
+    value: string | number;
+    icon: LucideIcon;
+    hint: string;
+    href?: string;
+  };
+
+  const kpis: Kpi[] = [
     { label: "Sites", value: sites, icon: Building2, hint: "Active facilities" },
     {
       label: "Records",
@@ -52,6 +71,8 @@ export default async function DashboardPage() {
       value: pending.toLocaleString(),
       icon: Hourglass,
       hint: "Submitted, awaiting approval",
+      // Reviewers can jump straight to the queue.
+      href: canApprove ? "/approvals" : undefined,
     },
     {
       label: "Audit events",
@@ -75,8 +96,10 @@ export default async function DashboardPage() {
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {kpis.map((k) => {
           const Icon = k.icon;
-          return (
-            <Card key={k.label}>
+          const card = (
+            <Card
+              className={k.href ? "transition-colors hover:bg-muted/50" : undefined}
+            >
               <CardHeader>
                 <CardTitle className="flex items-center justify-between text-sm font-medium text-muted-foreground">
                   {k.label}
@@ -90,6 +113,13 @@ export default async function DashboardPage() {
                 <p className="mt-1 text-xs text-muted-foreground">{k.hint}</p>
               </CardContent>
             </Card>
+          );
+          return k.href ? (
+            <Link key={k.label} href={k.href} className="block">
+              {card}
+            </Link>
+          ) : (
+            <div key={k.label}>{card}</div>
           );
         })}
       </div>

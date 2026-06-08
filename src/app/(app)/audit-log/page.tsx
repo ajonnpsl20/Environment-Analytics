@@ -119,6 +119,7 @@ export default async function AuditLogPage({
             <Button
               variant="outline"
               size="sm"
+              nativeButton={false}
               render={<Link href={pageHref(page - 1)} />}
             >
               Previous
@@ -132,6 +133,7 @@ export default async function AuditLogPage({
             <Button
               variant="outline"
               size="sm"
+              nativeButton={false}
               render={<Link href={pageHref(page + 1)} />}
             >
               Next

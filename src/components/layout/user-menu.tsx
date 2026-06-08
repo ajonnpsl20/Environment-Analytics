@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
@@ -49,17 +50,20 @@ export function UserMenu({
         }
       />
       <DropdownMenuContent align="end" className="w-60">
-        <DropdownMenuLabel>
-          <div className="flex flex-col gap-0.5">
-            <span className="text-sm font-medium">{name}</span>
-            <span className="text-xs font-normal text-muted-foreground">
-              {email}
-            </span>
-            <span className="mt-1 text-xs font-normal text-muted-foreground">
-              {ROLE_LABELS[role]}
-            </span>
-          </div>
-        </DropdownMenuLabel>
+        {/* GroupLabel must sit inside a Menu.Group (Base UI requirement). */}
+        <DropdownMenuGroup>
+          <DropdownMenuLabel>
+            <div className="flex flex-col gap-0.5">
+              <span className="text-sm font-medium">{name}</span>
+              <span className="text-xs font-normal text-muted-foreground">
+                {email}
+              </span>
+              <span className="mt-1 text-xs font-normal text-muted-foreground">
+                {ROLE_LABELS[role]}
+              </span>
+            </div>
+          </DropdownMenuLabel>
+        </DropdownMenuGroup>
         <DropdownMenuSeparator />
         <DropdownMenuItem onClick={() => signOut({ callbackUrl: "/login" })}>
           <LogOut />

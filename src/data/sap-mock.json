@@ -1,0 +1,37 @@
+{
+  "airEmission": [
+    { "Site ID": "MAN-001", "Stack ID": "STK-1", "Measured At": "2026-05-04", "Pollutant": "NOx", "Concentration": "182.4", "Unit": "mg/m³", "Flow Rate (m³/h)": "12400", "Total Emissions": "3100", "Measurement Method": "CONTINUOUS", "Equipment Ref": "CEMS-204" },
+    { "Site ID": "MAN-001", "Stack ID": "STK-2", "Measured At": "2026-05-04", "Pollutant": "CO2", "Concentration": "34210", "Unit": "mg/m³", "Flow Rate (m³/h)": "41800", "Total Emissions": "98500", "Measurement Method": "CONTINUOUS", "Equipment Ref": "CEMS-205" },
+    { "Site ID": "MAN-001", "Stack ID": "STK-1", "Measured At": "2026-05-18", "Pollutant": "SOx", "Concentration": "148.7", "Unit": "mg/m³", "Flow Rate (m³/h)": "11900", "Total Emissions": "2400", "Measurement Method": "PERIODIC", "Equipment Ref": "CEMS-204" },
+    { "Site ID": "BIR-002", "Stack ID": "STK-1", "Measured At": "2026-05-06", "Pollutant": "PM2.5", "Concentration": "22.1", "Unit": "mg/m³", "Flow Rate (m³/h)": "8200", "Total Emissions": "410", "Measurement Method": "PERIODIC", "Equipment Ref": "CEMS-118" },
+    { "Site ID": "BIR-002", "Stack ID": "STK-2", "Measured At": "2026-05-06", "Pollutant": "NOx", "Concentration": "203.9", "Unit": "mg/m³", "Flow Rate (m³/h)": "9100", "Total Emissions": "2800", "Measurement Method": "CONTINUOUS", "Equipment Ref": "CEMS-119" },
+    { "Site ID": "BIR-002", "Stack ID": "STK-1", "Measured At": "2026-05-20", "Pollutant": "CO2", "Concentration": "28760", "Unit": "mg/m³", "Flow Rate (m³/h)": "39200", "Total Emissions": "81200", "Measurement Method": "CALCULATED", "Equipment Ref": "CEMS-118" },
+    { "Site ID": "LON-003", "Stack ID": "STK-1", "Measured At": "2026-05-09", "Pollutant": "PM2.5", "Concentration": "9.4", "Unit": "mg/m³", "Flow Rate (m³/h)": "3100", "Total Emissions": "120", "Measurement Method": "ESTIMATED", "Equipment Ref": "CEMS-330" },
+    { "Site ID": "LON-003", "Stack ID": "STK-1", "Measured At": "2026-05-23", "Pollutant": "NOx", "Concentration": "76.2", "Unit": "mg/m³", "Flow Rate (m³/h)": "3400", "Total Emissions": "640", "Measurement Method": "PERIODIC", "Equipment Ref": "CEMS-330" },
+    { "Site ID": "GLA-004", "Stack ID": "STK-1", "Measured At": "2026-05-11", "Pollutant": "CO2", "Concentration": "41880", "Unit": "mg/m³", "Flow Rate (m³/h)": "46100", "Total Emissions": "121400", "Measurement Method": "CONTINUOUS", "Equipment Ref": "CEMS-512" },
+    { "Site ID": "GLA-004", "Stack ID": "STK-2", "Measured At": "2026-05-11", "Pollutant": "SOx", "Concentration": "211.5", "Unit": "mg/m³", "Flow Rate (m³/h)": "44300", "Total Emissions": "5600", "Measurement Method": "CONTINUOUS", "Equipment Ref": "CEMS-513" },
+    { "Site ID": "GLA-004", "Stack ID": "STK-1", "Measured At": "2026-05-25", "Pollutant": "NOx", "Concentration": "298.3", "Unit": "mg/m³", "Flow Rate (m³/h)": "45200", "Total Emissions": "7100", "Measurement Method": "CONTINUOUS", "Equipment Ref": "CEMS-512" },
+    { "Site ID": "CAR-005", "Stack ID": "STK-1", "Measured At": "2026-05-13", "Pollutant": "PM2.5", "Concentration": "14.8", "Unit": "mg/m³", "Flow Rate (m³/h)": "5600", "Total Emissions": "260", "Measurement Method": "PERIODIC", "Equipment Ref": "CEMS-271" },
+    { "Site ID": "CAR-005", "Stack ID": "STK-2", "Measured At": "2026-05-13", "Pollutant": "CO2", "Concentration": "19340", "Unit": "mg/m³", "Flow Rate (m³/h)": "22700", "Total Emissions": "47800", "Measurement Method": "CALCULATED", "Equipment Ref": "CEMS-272" },
+    { "Site ID": "CAR-005", "Stack ID": "STK-1", "Measured At": "2026-05-27", "Pollutant": "SOx", "Concentration": "63.9", "Unit": "mg/m³", "Flow Rate (m³/h)": "5400", "Total Emissions": "880", "Measurement Method": "ESTIMATED", "Equipment Ref": "CEMS-271" },
+    { "Site ID": "MAN-001", "Stack ID": "STK-3", "Measured At": "2026-06-01", "Pollutant": "NOx", "Concentration": "171.0", "Unit": "mg/m³", "Flow Rate (m³/h)": "13100", "Total Emissions": "2950", "Measurement Method": "CONTINUOUS", "Equipment Ref": "CEMS-206" },
+    { "Site ID": "BIR-002", "Stack ID": "STK-1", "Measured At": "2026-06-02", "Pollutant": "SOx", "Concentration": "97.5", "Unit": "mg/m³", "Flow Rate (m³/h)": "8700", "Total Emissions": "1300", "Measurement Method": "PERIODIC", "Equipment Ref": "CEMS-118" },
+    { "Site ID": "GLA-004", "Stack ID": "STK-1", "Measured At": "2026-06-03", "Pollutant": "PM2.5", "Concentration": "31.2", "Unit": "mg/m³", "Flow Rate (m³/h)": "45800", "Total Emissions": "690", "Measurement Method": "CONTINUOUS", "Equipment Ref": "CEMS-512" },
+    { "Site ID": "LON-003", "Stack ID": "STK-1", "Measured At": "2026-06-04", "Pollutant": "CO2", "Concentration": "12970", "Unit": "mg/m³", "Flow Rate (m³/h)": "3300", "Total Emissions": "34200", "Measurement Method": "CALCULATED", "Equipment Ref": "CEMS-330" }
+  ],
+  "waste": [
+    { "Site ID": "MAN-001", "Waste Type": "HAZARDOUS", "Stream": "Waste Oils", "Weight (kg)": "1240", "Disposal Method": "Treatment", "Contractor": "Veolia", "WTN Reference": "WTN-2026-5001", "Transfer Date": "2026-05-15" },
+    { "Site ID": "GLA-004", "Waste Type": "RECYCLABLE", "Stream": "Metals", "Weight (kg)": "8800", "Disposal Method": "Recycling", "Contractor": "Biffa", "WTN Reference": "WTN-2026-5002", "Transfer Date": "2026-05-16" }
+  ],
+  "water": [
+    { "Site ID": "BIR-002", "Meter ID": "WM-1", "Reading Start": "184320", "Reading End": "186110", "Consumption (m³)": "1790", "Source": "MAINS", "Period Start": "2026-05-01", "Period End": "2026-05-31" },
+    { "Site ID": "CAR-005", "Meter ID": "WM-2", "Reading Start": "91220", "Reading End": "92010", "Consumption (m³)": "790", "Source": "BOREHOLE", "Period Start": "2026-05-01", "Period End": "2026-05-31" }
+  ],
+  "electricity": [
+    { "Site ID": "MAN-001", "Meter ID": "EM-1", "Consumption (kWh)": "184200", "Peak (kWh)": "98300", "Off-Peak (kWh)": "85900", "Renewable %": "38.4", "Supplier": "EDF Energy", "Period Start": "2026-05-01", "Period End": "2026-05-31" },
+    { "Site ID": "BIR-002", "Meter ID": "EM-2", "Consumption (kWh)": "72600", "Peak (kWh)": "39100", "Off-Peak (kWh)": "33500", "Renewable %": "61.2", "Supplier": "Octopus Energy", "Period Start": "2026-05-01", "Period End": "2026-05-31" },
+    { "Site ID": "LON-003", "Meter ID": "EM-1", "Consumption (kWh)": "41800", "Peak (kWh)": "23400", "Off-Peak (kWh)": "18400", "Renewable %": "74.9", "Supplier": "SSE", "Period Start": "2026-05-01", "Period End": "2026-05-31" },
+    { "Site ID": "GLA-004", "Meter ID": "EM-3", "Consumption (kWh)": "228500", "Peak (kWh)": "121900", "Off-Peak (kWh)": "106600", "Renewable %": "29.7", "Supplier": "E.ON Next", "Period Start": "2026-05-01", "Period End": "2026-05-31" },
+    { "Site ID": "CAR-005", "Meter ID": "EM-2", "Consumption (kWh)": "63400", "Peak (kWh)": "34200", "Off-Peak (kWh)": "29200", "Renewable %": "52.1", "Supplier": "British Gas", "Period Start": "2026-05-01", "Period End": "2026-05-31" }
+  ]
+}

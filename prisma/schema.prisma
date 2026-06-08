@@ -253,3 +253,19 @@ model AuditLog {
   @@index([userId])
   @@index([timestamp])
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Connector sync state — records each connector/metric sync EVENT (updated even
+// when a sync pulls zero rows), so "last sync" reflects the run, not the last
+// import. One row per (connectorKey, metricKey); the mock SAP connector uses it.
+// ─────────────────────────────────────────────────────────────────────────────
+model ConnectorSync {
+  id             String   @id @default(cuid())
+  connectorKey   String // e.g. "sap"
+  metricKey      String // import descriptor key, e.g. "airEmission"
+  lastSyncAt     DateTime
+  lastCreated    Int      @default(0)
+  lastResultJson Json?
+
+  @@unique([connectorKey, metricKey])
+}
