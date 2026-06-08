@@ -117,60 +117,69 @@ export function WasteForm({
 
   function submit(values: WasteFormValues) {
     startTransition(async () => {
-      let wtnKey = values.wtnDocumentR2Key ?? "";
+      try {
+        let wtnKey = values.wtnDocumentR2Key ?? "";
 
-      // Upload the WTN PDF first (direct to R2 via a presigned URL), if attached.
-      if (r2Enabled && file) {
-        const presign = await fetch("/api/uploads/wtn", {
-          method: "POST",
+        // Upload the WTN PDF first (direct to R2 via a presigned URL), if attached.
+        if (r2Enabled && file) {
+          const presign = await fetch("/api/uploads/wtn", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ filename: file.name, contentType: "application/pdf" }),
+          });
+          if (!presign.ok) {
+            const e = (await presign.json().catch(() => ({}))) as ApiError;
+            toast.error(e.error ?? "Could not start the file upload.");
+            return;
+          }
+          const { key, uploadUrl } = (await presign.json()) as {
+            key: string;
+            uploadUrl: string;
+          };
+          // A CORS/network failure here REJECTS (it doesn't return !ok), so the
+          // whole submit is wrapped in try/catch to surface a toast rather than
+          // letting the throw bubble up and blank the page.
+          const put = await fetch(uploadUrl, {
+            method: "PUT",
+            headers: { "Content-Type": "application/pdf" },
+            body: file,
+          });
+          if (!put.ok) {
+            toast.error("Could not upload the file to storage.");
+            return;
+          }
+          wtnKey = key;
+        }
+
+        const payload = { ...values, wtnDocumentR2Key: wtnKey || undefined };
+        const url = recordId ? `/api/waste/${recordId}` : "/api/waste";
+        const res = await fetch(url, {
+          method: recordId ? "PATCH" : "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ filename: file.name, contentType: "application/pdf" }),
+          body: JSON.stringify(payload),
         });
-        if (!presign.ok) {
-          const e = (await presign.json().catch(() => ({}))) as ApiError;
-          toast.error(e.error ?? "Could not start the file upload.");
+
+        if (res.ok) {
+          toast.success(recordId ? "Record updated" : "Record submitted for review");
+          router.refresh();
+          onSuccess();
           return;
         }
-        const { key, uploadUrl } = (await presign.json()) as {
-          key: string;
-          uploadUrl: string;
-        };
-        const put = await fetch(uploadUrl, {
-          method: "PUT",
-          headers: { "Content-Type": "application/pdf" },
-          body: file,
-        });
-        if (!put.ok) {
-          toast.error("Could not upload the file to storage.");
-          return;
-        }
-        wtnKey = key;
-      }
 
-      const payload = { ...values, wtnDocumentR2Key: wtnKey || undefined };
-      const url = recordId ? `/api/waste/${recordId}` : "/api/waste";
-      const res = await fetch(url, {
-        method: recordId ? "PATCH" : "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-
-      if (res.ok) {
-        toast.success(recordId ? "Record updated" : "Record submitted for review");
-        router.refresh();
-        onSuccess();
-        return;
-      }
-
-      const data = (await res.json().catch(() => ({}))) as ApiError;
-      if (data.fieldErrors) {
-        for (const [fieldName, message] of Object.entries(data.fieldErrors)) {
-          if (fieldName in EMPTY) {
-            form.setError(fieldName as keyof WasteFormValues, { message });
+        const data = (await res.json().catch(() => ({}))) as ApiError;
+        if (data.fieldErrors) {
+          for (const [fieldName, message] of Object.entries(data.fieldErrors)) {
+            if (fieldName in EMPTY) {
+              form.setError(fieldName as keyof WasteFormValues, { message });
+            }
           }
         }
+        toast.error(data.error ?? "Could not save the record.");
+      } catch {
+        toast.error(
+          "Couldn't reach the server or file storage. Check your connection and try again.",
+        );
       }
-      toast.error(data.error ?? "Could not save the record.");
     });
   }
 

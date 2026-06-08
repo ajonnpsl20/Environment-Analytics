@@ -68,29 +68,35 @@ export function WaterForm({
 
   function submit(values: WaterFormValues) {
     startTransition(async () => {
-      const url = recordId ? `/api/water/${recordId}` : "/api/water";
-      const res = await fetch(url, {
-        method: recordId ? "PATCH" : "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(values),
-      });
+      try {
+        const url = recordId ? `/api/water/${recordId}` : "/api/water";
+        const res = await fetch(url, {
+          method: recordId ? "PATCH" : "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(values),
+        });
 
-      if (res.ok) {
-        toast.success(recordId ? "Record updated" : "Record submitted for review");
-        router.refresh();
-        onSuccess();
-        return;
-      }
+        if (res.ok) {
+          toast.success(recordId ? "Record updated" : "Record submitted for review");
+          router.refresh();
+          onSuccess();
+          return;
+        }
 
-      const data = (await res.json().catch(() => ({}))) as ApiError;
-      if (data.fieldErrors) {
-        for (const [field, message] of Object.entries(data.fieldErrors)) {
-          if (field in EMPTY) {
-            form.setError(field as keyof WaterFormValues, { message });
+        const data = (await res.json().catch(() => ({}))) as ApiError;
+        if (data.fieldErrors) {
+          for (const [field, message] of Object.entries(data.fieldErrors)) {
+            if (field in EMPTY) {
+              form.setError(field as keyof WaterFormValues, { message });
+            }
           }
         }
+        toast.error(data.error ?? "Could not save the record.");
+      } catch {
+        toast.error(
+          "Couldn't reach the server. Check your connection and try again.",
+        );
       }
-      toast.error(data.error ?? "Could not save the record.");
     });
   }
 
