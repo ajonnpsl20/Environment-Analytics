@@ -287,7 +287,13 @@ async function main() {
   await prisma.site.createMany({ data: SITES.map((s) => ({ ...s })) });
 
   // Users
-  const hashedPassword = await bcrypt.hash("demo1234", 10);
+  const demoPassword = process.env.SEED_DEMO_PASSWORD;
+  if (!demoPassword) {
+    throw new Error(
+      "SEED_DEMO_PASSWORD is not set — add it to .env.local (see .env.example).",
+    );
+  }
+  const hashedPassword = await bcrypt.hash(demoPassword, 10);
   await prisma.user.createMany({
     data: [
       {

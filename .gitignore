@@ -34,6 +34,9 @@ yarn-error.log*
 .env*
 !.env.example
 
+# local-only demo credentials note (kept on the dev machine, never in the repo)
+DEMO_LOGINS.md
+
 # vercel
 .vercel
 

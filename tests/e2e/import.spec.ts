@@ -6,7 +6,7 @@ import { test, expect } from "@playwright/test";
 async function loginAsAdmin(page: import("@playwright/test").Page) {
   await page.goto("/login");
   await page.getByLabel("Email").fill("admin@envirohub.demo");
-  await page.getByLabel("Password").fill("demo1234");
+  await page.getByLabel("Password").fill(process.env.SEED_DEMO_PASSWORD ?? "");
   await page.getByRole("button", { name: "Sign in" }).click();
   await expect(page).toHaveURL(/\/dashboard/, { timeout: 20_000 });
 }
@@ -64,7 +64,7 @@ test("import: upload previews valid/invalid split then commits valid rows", asyn
 test("import: data entry user can import for assigned sites", async ({ page }) => {
   await page.goto("/login");
   await page.getByLabel("Email").fill("data@envirohub.demo");
-  await page.getByLabel("Password").fill("demo1234");
+  await page.getByLabel("Password").fill(process.env.SEED_DEMO_PASSWORD ?? "");
   await page.getByRole("button", { name: "Sign in" }).click();
   await expect(page).toHaveURL(/\/dashboard/, { timeout: 20_000 });
 

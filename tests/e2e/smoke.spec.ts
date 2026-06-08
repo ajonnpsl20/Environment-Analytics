@@ -10,7 +10,7 @@ test("admin can log in and reach dashboard, sites, and audit log", async ({
 }) => {
   await page.goto("/login");
   await page.getByLabel("Email").fill("admin@envirohub.demo");
-  await page.getByLabel("Password").fill("demo1234");
+  await page.getByLabel("Password").fill(process.env.SEED_DEMO_PASSWORD ?? "");
   await page.getByRole("button", { name: "Sign in" }).click();
 
   // Generous timeouts: the dev server compiles each route on first navigation.
@@ -36,7 +36,7 @@ test("admin can log in and reach dashboard, sites, and audit log", async ({
 test("data entry user does NOT see the Sites nav item", async ({ page }) => {
   await page.goto("/login");
   await page.getByLabel("Email").fill("data@envirohub.demo");
-  await page.getByLabel("Password").fill("demo1234");
+  await page.getByLabel("Password").fill(process.env.SEED_DEMO_PASSWORD ?? "");
   await page.getByRole("button", { name: "Sign in" }).click();
 
   await expect(page).toHaveURL(/\/dashboard/, { timeout: 20_000 });
@@ -49,7 +49,7 @@ test("the avatar menu opens without crashing and offers log out", async ({
 }) => {
   await page.goto("/login");
   await page.getByLabel("Email").fill("admin@envirohub.demo");
-  await page.getByLabel("Password").fill("demo1234");
+  await page.getByLabel("Password").fill(process.env.SEED_DEMO_PASSWORD ?? "");
   await page.getByRole("button", { name: "Sign in" }).click();
   await expect(page).toHaveURL(/\/dashboard/, { timeout: 20_000 });
 

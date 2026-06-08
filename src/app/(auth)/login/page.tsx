@@ -27,6 +27,10 @@ const DEMO_ACCOUNTS = [
   { label: "Data Entry", email: "data@envirohub.demo" },
 ] as const;
 
+// Injected at build time from the env so the literal stays out of source/git
+// history. Intentionally surfaced on this PoC login screen for demo convenience.
+const DEMO_PASSWORD = process.env.NEXT_PUBLIC_DEMO_PASSWORD ?? "";
+
 export default function LoginPage() {
   const router = useRouter();
   const [pending, setPending] = useState(false);
@@ -52,7 +56,7 @@ export default function LoginPage() {
 
   function fillDemo(email: string) {
     form.setValue("email", email, { shouldValidate: true });
-    form.setValue("password", "demo1234", { shouldValidate: true });
+    form.setValue("password", DEMO_PASSWORD, { shouldValidate: true });
   }
 
   return (
@@ -157,7 +161,7 @@ export default function LoginPage() {
 
           <div className="space-y-3 rounded-lg border bg-muted/40 p-4">
             <p className="text-xs font-medium text-muted-foreground">
-              Demo accounts (password: demo1234)
+              Demo accounts (password: {DEMO_PASSWORD})
             </p>
             <div className="flex flex-wrap gap-2">
               {DEMO_ACCOUNTS.map((acc) => (

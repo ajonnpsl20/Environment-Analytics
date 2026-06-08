@@ -322,7 +322,7 @@ All permission checks go through `src/lib/permissions.ts`. Never inline a role c
 
 All seed records are deterministic (seeded random) so demos are repeatable.
 
-Demo login passwords are `demo1234` for all three users.
+Demo login passwords are set via the `SEED_DEMO_PASSWORD` env var in `.env.local` (gitignored) and shared by all demo users — the literal is never committed. See your local `DEMO_LOGINS.md` for the current value.
 
 ---
 
@@ -373,7 +373,7 @@ Run the checklist physically; don't trust memory.
 
 ## Post-PoC: Authentication & user lifecycle (NOT for PoC — captured for Phase 3)
 
-The PoC uses a NextAuth credentials provider with seeded users sharing the demo password `demo1234`. That is a demo convenience only. For a real deployment:
+The PoC uses a NextAuth credentials provider with seeded users sharing a demo password (set via the `SEED_DEMO_PASSWORD` env var, never hardcoded). That is a demo convenience only. For a real deployment:
 
 - **Per-user credentials, not shared.** `User.hashedPassword` is already per-row; the shared demo password exists only in `seed.ts`. Real users each have their own credential.
 - **Preferred path — corporate SSO (OIDC/SAML).** The identity provider (Entra/Azure AD, Okta, Google Workspace) owns passwords, MFA, complexity, lockout. EnviroHub stores no passwords. NextAuth v5's `providers` array makes this an additive change — the session/JWT callbacks, `permissions.ts`, and pages stay unchanged; only the provider + a claims→`Role` mapping are added.
