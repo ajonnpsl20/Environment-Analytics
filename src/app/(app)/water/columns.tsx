@@ -3,7 +3,7 @@
 import type { Prisma } from "@prisma/client";
 import type { ColumnDef } from "@tanstack/react-table";
 import { format } from "date-fns";
-import { MoreHorizontal, Pencil } from "lucide-react";
+import { MoreHorizontal, Pencil, Trash2 } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -25,6 +25,7 @@ export type WaterRow = Prisma.WaterUsageRecordGetPayload<{
 
 export function getWaterColumns(handlers: {
   onEdit: (record: WaterRow) => void;
+  onDelete: (record: WaterRow) => void;
   canEdit: boolean;
 }): ColumnDef<WaterRow>[] {
   return [
@@ -122,6 +123,13 @@ export function getWaterColumns(handlers: {
                 <DropdownMenuItem onClick={() => handlers.onEdit(record)}>
                   <Pencil />
                   Edit
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  variant="destructive"
+                  onClick={() => handlers.onDelete(record)}
+                >
+                  <Trash2 />
+                  Delete
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>

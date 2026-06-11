@@ -19,6 +19,7 @@ export const AUDIT_ENTITY_TYPES = [
   "WasteRecord",
   "WaterUsageRecord",
   "ElectricityRecord",
+  "GasRecord",
 ] as const;
 
 type BadgeVariant = "default" | "secondary" | "destructive" | "outline";

@@ -22,8 +22,8 @@ test("connectors: SAP card lists metrics with a Sync for each registered one", a
 
   await expect(page.getByText("SAP ERP — Production")).toBeVisible();
   await expect(page.getByText("Demo", { exact: true })).toBeVisible();
-  // All four metrics are registered → one Sync button per metric in the feed.
-  await expect(page.getByRole("button", { name: "Sync now" })).toHaveCount(4);
+  // All five metrics are registered → one Sync button per metric in the feed.
+  await expect(page.getByRole("button", { name: "Sync now" })).toHaveCount(5);
 });
 
 test("connectors: sync imports SAP records and shows the banner", async ({

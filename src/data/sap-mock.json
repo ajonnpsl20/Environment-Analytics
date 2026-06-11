@@ -33,5 +33,12 @@
     { "Site ID": "LON-003", "Meter ID": "EM-1", "Consumption (kWh)": "41800", "Renewable %": "74.9", "Supplier": "SSE", "Period Start": "2026-05-01", "Period End": "2026-05-31" },
     { "Site ID": "GLA-004", "Meter ID": "EM-3", "Consumption (kWh)": "228500", "Renewable %": "29.7", "Supplier": "E.ON Next", "Period Start": "2026-05-01", "Period End": "2026-05-31" },
     { "Site ID": "CAR-005", "Meter ID": "EM-2", "Consumption (kWh)": "63400", "Renewable %": "52.1", "Supplier": "British Gas", "Period Start": "2026-05-01", "Period End": "2026-05-31" }
+  ],
+  "gas": [
+    { "Site ID": "MAN-001", "Meter ID": "GM-1", "Consumption (m³)": "31800", "Period Start": "2026-05-01", "Period End": "2026-05-31" },
+    { "Site ID": "BIR-002", "Meter ID": "GM-2", "Consumption (m³)": "14200", "Period Start": "2026-05-01", "Period End": "2026-05-31" },
+    { "Site ID": "LON-003", "Meter ID": "GM-1", "Consumption (m³)": "6900", "Period Start": "2026-05-01", "Period End": "2026-05-31" },
+    { "Site ID": "GLA-004", "Meter ID": "GM-3", "Consumption (m³)": "27400", "Period Start": "2026-05-01", "Period End": "2026-05-31" },
+    { "Site ID": "CAR-005", "Meter ID": "GM-2", "Consumption (m³)": "11600", "Period Start": "2026-05-01", "Period End": "2026-05-31" }
   ]
 }

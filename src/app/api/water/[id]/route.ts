@@ -76,3 +76,28 @@ export async function PATCH(req: NextRequest, { params }: Context) {
 
   return NextResponse.json({ record });
 }
+
+// DELETE /api/water/[id] — delete a record.
+export async function DELETE(_req: NextRequest, { params }: Context) {
+  const result = await requireApiUser("enter_data");
+  if ("response" in result) return result.response;
+  const { user } = result;
+  const { id } = await params;
+
+  const before = await db.waterUsageRecord.findUnique({ where: { id } });
+  if (!before || !(await canAccessSite(user, before.siteId))) {
+    return NextResponse.json({ error: "Record not found." }, { status: 404 });
+  }
+
+  await db.waterUsageRecord.delete({ where: { id } });
+
+  await logAction({
+    entityType: "WaterUsageRecord",
+    entityId: id,
+    action: "DELETED",
+    userId: user.id,
+    before,
+  });
+
+  return NextResponse.json({ ok: true });
+}

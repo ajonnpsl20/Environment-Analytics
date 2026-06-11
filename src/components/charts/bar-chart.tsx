@@ -183,7 +183,7 @@ export function BarChart({
             // Shade alternate bands so the month groupings read clearly behind
             // the bars; the un-shaded bands stay transparent.
             fill={i % 2 === 1 ? "var(--color-muted)" : "transparent"}
-            fillOpacity={i % 2 === 1 ? 0.35 : 0}
+            fillOpacity={i % 2 === 1 ? 0.7 : 0}
             stroke="none"
             ifOverflow="extendDomain"
             label={{

@@ -90,7 +90,7 @@ export function ConnectorsClient({ metrics }: { metrics: ConnectorMetric[] }) {
               </CardTitle>
               <CardDescription>
                 Mock connector reading a local sample feed. Real SAP integration
-                plugs in here — same normalization, same approval flow.
+                plugs will be placed here — same workflow.
               </CardDescription>
             </div>
           </div>

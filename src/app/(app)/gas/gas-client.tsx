@@ -17,51 +17,45 @@ import {
 } from "@/components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { DataTable } from "@/components/tables/data-table";
-import { WasteForm, type SiteOption } from "@/components/data-entry/waste-form";
+import { GasForm, type SiteOption } from "@/components/data-entry/gas-form";
 import { ImportDialog } from "@/components/data-entry/import-dialog";
-import type { WasteFormValues } from "@/lib/validations/waste";
-import type { WasteTypeName } from "@/lib/validations/waste";
-import { WasteFilters } from "./filters";
-import { WasteDashboard } from "./dashboard";
-import { getWasteColumns, type WasteRow } from "./columns";
+import type { GasFormValues } from "@/lib/validations/gas";
+import { GasFilters } from "./filters";
+import { GasDashboard } from "./dashboard";
+import { getGasColumns, type GasRow } from "./columns";
 
-function toFormValues(r: WasteRow): WasteFormValues {
-  const d = r.transferDate;
-  const yyyyMmDd = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+function toYyyyMmDd(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+function toFormValues(r: GasRow): GasFormValues {
   return {
     siteId: r.siteId,
-    wasteType: r.wasteType as WasteTypeName,
-    ewcCode: r.ewcCode,
-    streamCategory: r.streamCategory,
-    weightKg: String(r.weightKg),
-    disposalMethod: r.disposalMethod,
-    contractor: r.contractor,
-    wtnReference: r.wtnReference,
-    transferDate: yyyyMmDd,
-    wtnDocumentR2Key: r.wtnDocumentR2Key ?? "",
+    meterId: r.meterId,
+    consumptionM3: String(r.consumptionM3),
+    periodStart: toYyyyMmDd(r.periodStart),
+    periodEnd: toYyyyMmDd(r.periodEnd),
   };
 }
 
-export function WasteClient({
+export function GasClient({
   records,
   sites,
   canEnter,
-  r2Enabled,
 }: {
-  records: WasteRow[];
+  records: GasRow[];
   sites: SiteOption[];
   canEnter: boolean;
-  r2Enabled: boolean;
 }) {
   const params = useSearchParams();
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [addOpen, setAddOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
-  const [editRecord, setEditRecord] = useState<WasteRow | null>(null);
-  const [deleteRecord, setDeleteRecord] = useState<WasteRow | null>(null);
+  const [editRecord, setEditRecord] = useState<GasRow | null>(null);
+  const [deleteRecord, setDeleteRecord] = useState<GasRow | null>(null);
 
-  const columns = getWasteColumns({
+  const columns = getGasColumns({
     onEdit: setEditRecord,
     onDelete: setDeleteRecord,
     canEdit: canEnter,
@@ -72,7 +66,7 @@ export function WasteClient({
     const id = deleteRecord.id;
     startTransition(async () => {
       try {
-        const res = await fetch(`/api/waste/${id}`, { method: "DELETE" });
+        const res = await fetch(`/api/gas/${id}`, { method: "DELETE" });
         if (res.ok) {
           toast.success("Record deleted");
           router.refresh();
@@ -92,7 +86,7 @@ export function WasteClient({
   function exportHref(formatExt: "xlsx" | "csv") {
     const q = new URLSearchParams(params.toString());
     q.set("format", formatExt === "csv" ? "csv" : "xlsx");
-    return `/api/export/waste?${q.toString()}`;
+    return `/api/export/gas?${q.toString()}`;
   }
 
   const toolbar = (
@@ -139,19 +133,19 @@ export function WasteClient({
         </TabsList>
 
         <TabsContent value="data" className="space-y-4">
-          <WasteFilters sites={sites} />
+          <GasFilters sites={sites} />
           <DataTable
             columns={columns}
             data={records}
             pageSize={15}
-            emptyMessage="No waste records match these filters."
+            emptyMessage="No gas records match these filters."
             toolbar={toolbar}
           />
         </TabsContent>
 
         <TabsContent value="dashboard" className="space-y-4">
-          <WasteFilters sites={sites} />
-          <WasteDashboard records={records} />
+          <GasFilters sites={sites} />
+          <GasDashboard records={records} />
         </TabsContent>
       </Tabs>
 
@@ -159,16 +153,12 @@ export function WasteClient({
         <Dialog open={addOpen} onOpenChange={setAddOpen}>
           <DialogContent className="sm:max-w-2xl">
             <DialogHeader>
-              <DialogTitle>New waste record</DialogTitle>
+              <DialogTitle>New gas record</DialogTitle>
               <DialogDescription>
-                The record is submitted for Site Admin review.
+                Add a gas meter reading for a site and period.
               </DialogDescription>
             </DialogHeader>
-            <WasteForm
-              sites={sites}
-              r2Enabled={r2Enabled}
-              onSuccess={() => setAddOpen(false)}
-            />
+            <GasForm sites={sites} onSuccess={() => setAddOpen(false)} />
           </DialogContent>
         </Dialog>
       )}
@@ -177,12 +167,12 @@ export function WasteClient({
         <Dialog open={importOpen} onOpenChange={setImportOpen}>
           <DialogContent className="sm:max-w-2xl">
             <DialogHeader>
-              <DialogTitle>Import waste records</DialogTitle>
+              <DialogTitle>Import gas records</DialogTitle>
               <DialogDescription>
-                Upload a CSV or Excel file. Valid rows are submitted for review.
+                Upload a CSV or Excel file. Valid rows are added as records.
               </DialogDescription>
             </DialogHeader>
-            <ImportDialog metricKey="waste" onSuccess={() => setImportOpen(false)} />
+            <ImportDialog metricKey="gas" onSuccess={() => setImportOpen(false)} />
           </DialogContent>
         </Dialog>
       )}
@@ -193,15 +183,12 @@ export function WasteClient({
       >
         <DialogContent className="sm:max-w-2xl">
           <DialogHeader>
-            <DialogTitle>Edit waste record</DialogTitle>
-            <DialogDescription>
-              Editing a returned record resubmits it for review.
-            </DialogDescription>
+            <DialogTitle>Edit gas record</DialogTitle>
+            <DialogDescription>Update this gas meter reading.</DialogDescription>
           </DialogHeader>
           {editRecord && (
-            <WasteForm
+            <GasForm
               sites={sites}
-              r2Enabled={r2Enabled}
               recordId={editRecord.id}
               defaultValues={toFormValues(editRecord)}
               onSuccess={() => setEditRecord(null)}
@@ -216,10 +203,10 @@ export function WasteClient({
       >
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Delete waste record</DialogTitle>
+            <DialogTitle>Delete gas record</DialogTitle>
             <DialogDescription>
               {deleteRecord
-                ? `Delete the record for ${deleteRecord.site.name} (${format(deleteRecord.transferDate, "d MMM yyyy")})? This can't be undone. Any attached WTN document is also removed.`
+                ? `Delete the record for ${deleteRecord.site.name} (${format(deleteRecord.periodStart, "d MMM yyyy")})? This can't be undone.`
                 : ""}
             </DialogDescription>
           </DialogHeader>

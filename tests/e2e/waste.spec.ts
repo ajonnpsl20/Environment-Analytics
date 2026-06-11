@@ -74,12 +74,12 @@ test("waste: import template endpoint returns a spreadsheet", async ({ page }) =
   expect(res.headers()["content-type"]).toContain("spreadsheetml");
 });
 
-test("waste: the SAP connector offers a Sync for all four metrics", async ({
+test("waste: the SAP connector offers a Sync for all metrics", async ({
   page,
 }) => {
   await loginAsAdmin(page);
 
   await page.goto("/connectors");
   const syncButtons = page.getByRole("button", { name: "Sync now" });
-  await expect(syncButtons).toHaveCount(4); // Air, Waste, Water, Electricity
+  await expect(syncButtons).toHaveCount(5); // Air, Waste, Water, Electricity, Gas
 });

@@ -1,5 +1,10 @@
 import "server-only";
-import { S3Client, PutObjectCommand, GetObjectCommand } from "@aws-sdk/client-s3";
+import {
+  S3Client,
+  PutObjectCommand,
+  GetObjectCommand,
+  DeleteObjectCommand,
+} from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
 // Cloudflare R2 (S3-compatible) client for WTN document attachments.
@@ -62,4 +67,11 @@ export function presignPutUrl(key: string, contentType: string): Promise<string>
 export function presignGetUrl(key: string): Promise<string> {
   const command = new GetObjectCommand({ Bucket: BUCKET, Key: key });
   return getSignedUrl(getR2Client(), command, { expiresIn: PRESIGN_TTL });
+}
+
+/** Delete a stored object (e.g. when its waste record is deleted). */
+export async function deleteWtnKey(key: string): Promise<void> {
+  await getR2Client().send(
+    new DeleteObjectCommand({ Bucket: BUCKET, Key: key }),
+  );
 }

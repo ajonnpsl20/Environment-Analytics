@@ -63,11 +63,31 @@ test("electricity: import template endpoint returns a spreadsheet", async ({
   expect(res.headers()["content-type"]).toContain("spreadsheetml");
 });
 
-test("electricity: connector syncs all 4 metrics", async ({ page }) => {
+test("electricity: connector syncs all metrics", async ({ page }) => {
   await loginAsAdmin(page);
 
-  // All four metrics are registered → four Sync buttons on the connector.
+  // All five metrics are registered → five Sync buttons on the connector.
   await page.goto("/connectors");
   const syncButtons = page.getByRole("button", { name: "Sync now" });
-  await expect(syncButtons).toHaveCount(4);
+  await expect(syncButtons).toHaveCount(5);
+});
+
+test("electricity: delete a record via the row menu", async ({ page }) => {
+  await loginAsAdmin(page);
+  await page.goto("/electricity");
+  await expect(
+    page.getByRole("heading", { name: "Electricity", level: 2 }),
+  ).toBeVisible({ timeout: 20_000 });
+
+  // Open the first row's three-dots menu → Delete → confirm in the dialog.
+  await page.getByRole("button", { name: "Actions" }).first().click();
+  await page.getByRole("menuitem", { name: "Delete" }).click();
+  await expect(
+    page.getByRole("heading", { name: "Delete electricity record" }),
+  ).toBeVisible();
+  await page.getByRole("dialog").getByRole("button", { name: "Delete" }).click();
+
+  await expect(page.getByText("Record deleted")).toBeVisible({
+    timeout: 15_000,
+  });
 });

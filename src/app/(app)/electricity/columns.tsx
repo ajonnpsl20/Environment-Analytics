@@ -3,7 +3,7 @@
 import type { Prisma } from "@prisma/client";
 import type { ColumnDef } from "@tanstack/react-table";
 import { format } from "date-fns";
-import { MoreHorizontal, Pencil, Leaf } from "lucide-react";
+import { MoreHorizontal, Pencil, Leaf, Trash2 } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -24,6 +24,7 @@ export type ElectricityRow = Prisma.ElectricityRecordGetPayload<{
 
 export function getElectricityColumns(handlers: {
   onEdit: (record: ElectricityRow) => void;
+  onDelete: (record: ElectricityRow) => void;
   canEdit: boolean;
 }): ColumnDef<ElectricityRow>[] {
   return [
@@ -118,6 +119,13 @@ export function getElectricityColumns(handlers: {
                 <DropdownMenuItem onClick={() => handlers.onEdit(record)}>
                   <Pencil />
                   Edit
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  variant="destructive"
+                  onClick={() => handlers.onDelete(record)}
+                >
+                  <Trash2 />
+                  Delete
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>

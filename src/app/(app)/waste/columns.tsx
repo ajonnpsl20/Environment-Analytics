@@ -3,7 +3,7 @@
 import type { Prisma } from "@prisma/client";
 import type { ColumnDef } from "@tanstack/react-table";
 import { format } from "date-fns";
-import { MoreHorizontal, Pencil, Paperclip } from "lucide-react";
+import { MoreHorizontal, Pencil, Paperclip, Trash2 } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -25,6 +25,7 @@ export type WasteRow = Prisma.WasteRecordGetPayload<{
 
 export function getWasteColumns(handlers: {
   onEdit: (record: WasteRow) => void;
+  onDelete: (record: WasteRow) => void;
   canEdit: boolean;
 }): ColumnDef<WasteRow>[] {
   return [
@@ -149,6 +150,13 @@ export function getWasteColumns(handlers: {
                 <DropdownMenuItem onClick={() => handlers.onEdit(record)}>
                   <Pencil />
                   Edit
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  variant="destructive"
+                  onClick={() => handlers.onDelete(record)}
+                >
+                  <Trash2 />
+                  Delete
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>

@@ -202,15 +202,15 @@ const SITE_SCALE: Record<string, number> = {
   "site-cardiff": 0.85,
 };
 
-// Each site's fixed water-source mix (two each), chosen so every source type
-// appears somewhere and each site shows the same sources every month.
-const SITE_WATER_SOURCES: Record<string, readonly WaterSource[]> = {
-  "site-manchester": [WaterSource.MAINS, WaterSource.BOREHOLE],
-  "site-birmingham": [WaterSource.MAINS, WaterSource.RECYCLED],
-  "site-london": [WaterSource.MAINS, WaterSource.RAINWATER],
-  "site-glasgow": [WaterSource.MAINS, WaterSource.SURFACE_WATER],
-  "site-cardiff": [WaterSource.MAINS, WaterSource.BOREHOLE],
-};
+// Every site carries every water source every month — a full grid so the water
+// dashboard has no zero gaps (worst-case density for judging chart spacing).
+const ALL_WATER_SOURCES: readonly WaterSource[] = [
+  WaterSource.MAINS,
+  WaterSource.BOREHOLE,
+  WaterSource.RAINWATER,
+  WaterSource.SURFACE_WATER,
+  WaterSource.RECYCLED,
+];
 
 // Gentle seasonal factor (0.8…1.2) by month index, plus small per-call noise, so
 // consecutive months differ without being noisy.
@@ -274,6 +274,7 @@ async function main() {
   await prisma.wasteRecord.deleteMany();
   await prisma.waterUsageRecord.deleteMany();
   await prisma.electricityRecord.deleteMany();
+  await prisma.gasRecord.deleteMany();
   await prisma.siteAssignment.deleteMany();
   await prisma.user.deleteMany();
   await prisma.site.deleteMany();
@@ -398,12 +399,12 @@ async function main() {
   );
   await prisma.wasteRecord.createMany({ data: wasteRows });
 
-  // Water usage records — one per (site × month × the site's fixed sources), so
-  // every month shows every site with the same source mix (no gaps).
+  // Water usage records — one per (site × month × every source), a full grid so
+  // every month shows every site with all five sources (no zero gaps).
   let readingCursor = 100000;
   const waterRows = SITE_IDS.flatMap((siteId) =>
     MONTHS.flatMap((periodStart, mi) =>
-      SITE_WATER_SOURCES[siteId].map((source, si) => {
+      ALL_WATER_SOURCES.map((source, si) => {
         const id = `water-${siteId.replace("site-", "")}-${mi}-${si}`;
         const periodEnd = addDays(periodStart, 30);
         const consumptionM3 = round(
@@ -456,6 +457,28 @@ async function main() {
   );
   await prisma.electricityRecord.createMany({ data: elecRows });
 
+  // Gas records — one per (site × month), m³ consumption (higher in winter via the
+  // seasonal factor). Same per-site scaling as the other utilities.
+  const gasRows = SITE_IDS.flatMap((siteId) =>
+    MONTHS.map((periodStart, mi) => {
+      const id = `gas-${siteId.replace("site-", "")}-${mi}`;
+      const periodEnd = addDays(periodStart, 30);
+      const consumptionM3 = round(
+        randInt(1000, 40000) * SITE_SCALE[siteId] * seasonal(mi) * jitter(),
+      );
+      logEntry("GasRecord", id, siteId, periodStart);
+      return {
+        id,
+        siteId,
+        meterId: `GM-${randInt(1, 3)}`,
+        consumptionM3,
+        periodStart,
+        periodEnd,
+      };
+    }),
+  );
+  await prisma.gasRecord.createMany({ data: gasRows });
+
   // Audit log (accumulated during record generation)
   await prisma.auditLog.createMany({ data: auditRows });
 
@@ -472,11 +495,15 @@ async function main() {
   });
 
   const total =
-    airRows.length + wasteRows.length + waterRows.length + elecRows.length;
+    airRows.length +
+    wasteRows.length +
+    waterRows.length +
+    elecRows.length +
+    gasRows.length;
   console.error(
     `Seed complete: ${SITES.length} sites, 5 users, ${total} metric records ` +
       `(${airRows.length} air, ${wasteRows.length} waste, ${waterRows.length} water, ` +
-      `${elecRows.length} electricity), ${auditRows.length} audit-log entries.`,
+      `${elecRows.length} electricity, ${gasRows.length} gas), ${auditRows.length} audit-log entries.`,
   );
 }
 

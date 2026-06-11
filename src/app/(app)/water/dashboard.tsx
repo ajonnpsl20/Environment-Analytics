@@ -47,17 +47,21 @@ function buildNested(records: WaterRow[]): {
   groups: XAxisGroup[];
   siteByRow: Record<string, string>;
   monthByRow: Record<string, string>;
+  nameByCode: Record<string, string>;
+  legend: { code: string; name: string }[];
 } {
   // month key → (rowKey "mkey__siteId" → source → sum)
   const byMonth = new Map<string, Map<string, Map<string, number>>>();
   const monthLabel = new Map<string, string>();
   const sites = new Map<string, string>(); // siteId → short code
+  const siteName = new Map<string, string>(); // siteId → full name
   const sourcesPresent = new Set<WaterSourceName>();
 
   for (const r of records) {
     const mkey = format(r.periodStart, "yyyy-MM");
     monthLabel.set(mkey, format(r.periodStart, "MMM yyyy"));
     sites.set(r.site.siteId, shortCode(r.site.siteId));
+    siteName.set(r.site.siteId, r.site.name);
     sourcesPresent.add(r.source as WaterSourceName);
 
     let month = byMonth.get(mkey);
@@ -89,7 +93,8 @@ function buildNested(records: WaterRow[]): {
   const siteByRow: Record<string, string> = {};
   const monthByRow: Record<string, string> = {};
 
-  for (const mkey of recentMonths) {
+  const lastMi = recentMonths.length - 1;
+  recentMonths.forEach((mkey, mi) => {
     const month = byMonth.get(mkey)!;
     const rowKeys = siteIds.map((id) => `${mkey}__${id}`);
     rowKeys.forEach((rowKey, i) => {
@@ -103,14 +108,39 @@ function buildNested(records: WaterRow[]): {
       }
       data.push(row);
     });
+
+    // Two empty spacer columns per gap (after this month): `__gA` is the left half
+    // and belongs to THIS month's band, `__gB` the right half belongs to the NEXT
+    // month's band — so each gap is split half/half between the two months' shades
+    // (a ReferenceArea covers whole bands, so a half-gap needs its own column). No
+    // source keys ⇒ no bars; blank siteByRow ⇒ blank x-axis tick.
+    if (mi < lastMi) {
+      const gA = `__gA-${mi}`;
+      const gB = `__gB-${mi}`;
+      siteByRow[gA] = "";
+      siteByRow[gB] = "";
+      data.push({ rowKey: gA });
+      data.push({ rowKey: gB });
+    }
+
+    // Band spans from this month's leading right-half (`__gB` of the previous gap)
+    // to its trailing left-half (`__gA` of the next gap), so the shade tiles to the
+    // centre of each gap and the month label centres over the clusters.
     groups.push({
-      x1: rowKeys[0],
-      x2: rowKeys[rowKeys.length - 1],
+      x1: mi > 0 ? `__gB-${mi - 1}` : rowKeys[0],
+      x2: mi < lastMi ? `__gA-${mi}` : rowKeys[rowKeys.length - 1],
       label: monthLabel.get(mkey)!,
     });
-  }
+  });
 
-  return { data, series, groups, siteByRow, monthByRow };
+  const nameByCode: Record<string, string> = {};
+  const legend = siteIds.map((id) => {
+    const code = sites.get(id)!;
+    nameByCode[code] = siteName.get(id)!;
+    return { code, name: siteName.get(id)! };
+  });
+
+  return { data, series, groups, siteByRow, monthByRow, nameByCode, legend };
 }
 
 export function WaterDashboard({ records }: { records: WaterRow[] }) {
@@ -129,11 +159,20 @@ export function WaterDashboard({ records }: { records: WaterRow[] }) {
           unit="m³"
           height={360}
           xTickFormatter={(rk) => chart.siteByRow[rk] ?? rk}
-          xTooltipFormatter={(rk) =>
-            `${chart.siteByRow[rk] ?? rk} · ${chart.monthByRow[rk] ?? ""}`.trim()
-          }
+          xTooltipFormatter={(rk) => {
+            const code = chart.siteByRow[rk] ?? rk;
+            return `${chart.nameByCode[code] ?? code} · ${chart.monthByRow[rk] ?? ""}`.trim();
+          }}
           xGroups={chart.groups}
         />
+        {/* Key: which 3-letter axis code maps to which site. */}
+        <p className="mt-3 flex flex-wrap justify-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
+          {chart.legend.map((s) => (
+            <span key={s.code}>
+              <span className="font-medium text-foreground">{s.code}</span> — {s.name}
+            </span>
+          ))}
+        </p>
       </ChartCard>
     </div>
   );

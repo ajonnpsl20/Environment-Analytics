@@ -16,12 +16,13 @@ This file is Claude Code's primary guide for working on this project. Read this 
 
 ## PoC scope — what's IN
 
-These four data-entry modules are the PoC:
+These five data-entry modules are the PoC:
 
 1. **Air Emissions** (stack emissions per site/stack/pollutant) — dashboard: **one line chart per pollutant** (averaged concentration over time)
 2. **Waste Data** (waste transfer notes with required EWC code + required WTN reference & PDF) — dashboard: **two bar charts** (hazardous + non-hazardous, grouped by site)
 3. **Water Consumption** (meter readings) — dashboard: **one nested bar chart** (month → grouped by site → split by source; defaults to last 6 months)
 4. **Electricity Consumption** (kWh per period, renewable %) — dashboard: **one grouped-and-stacked bar chart** (per month, one bar per site, stacked renewable/non-renewable; defaults to last 12 months)
+5. **Gas Consumption** (m³ per period per meter) — dashboard: **one grouped bar chart** (one bar per site per month; defaults to last 12 months)
 
 Cross-cutting features for ALL four modules:
 
@@ -121,6 +122,7 @@ envirohub/
 │   │   │   ├── waste/
 │   │   │   ├── water/
 │   │   │   ├── electricity/
+│   │   │   ├── gas/
 │   │   │   ├── connectors/    # SAP connector mock UI
 │   │   │   └── audit-log/     # the "Data Entry Log" (route kept as /audit-log)
 │   │   ├── api/               # API routes
@@ -129,6 +131,7 @@ envirohub/
 │   │   │   ├── waste/
 │   │   │   ├── water/
 │   │   │   ├── electricity/
+│   │   │   ├── gas/
 │   │   │   ├── import/        # CSV/Excel import endpoints
 │   │   │   ├── export/        # CSV/Excel export endpoints
 │   │   │   ├── connectors/sap/  # mock SAP fetch endpoint
@@ -165,7 +168,7 @@ envirohub/
 
 The core entities follow the PDF spec, simplified for PoC scope:
 
-> **No status/authorship columns.** With the approval workflow removed, the four record tables carry **no** `status`, `submittedBy`, `approvedBy`, or `approvedAt`. Who-entered-what lives only in the Data Entry Log (`AuditLog.userId`).
+> **No status/authorship columns.** With the approval workflow removed, the five record tables carry **no** `status`, `submittedBy`, `approvedBy`, or `approvedAt`. Who-entered-what lives only in the Data Entry Log (`AuditLog.userId`).
 
 - **User** — id, email, name, hashedPassword (PoC only), role enum
 - **Site** — id, siteId (human-readable), name, address, country, operationalType
@@ -173,6 +176,7 @@ The core entities follow the PDF spec, simplified for PoC scope:
 - **WasteRecord** — siteId, wasteType (enum: hazardous/non-hazardous/recyclable), **ewcCode (required)**, streamCategory, weightKg, disposalMethod, contractor, **wtnReference (required)**, transferDate, **wtnDocumentR2Key** (nullable in schema; required by the manual web form/API, optional for import/connector)
 - **WaterUsageRecord** — siteId, meterId, readingStart, readingEnd, consumptionM3, source enum, periodStart, periodEnd
 - **ElectricityRecord** — siteId, meterId, consumptionKwh, renewablePercent (nullable), supplier (nullable), periodStart, periodEnd
+- **GasRecord** — siteId, meterId, consumptionM3, periodStart, periodEnd
 - **AuditLog** — id, entityType, entityId, action (enum), userId, timestamp, beforeJson, afterJson, notes
 
 Use Prisma enums for `Role`, `WasteType`, `WaterSource`, `MeasurementMethod`, `AuditAction`. (`RecordStatus` was removed.) The `AuditAction` enum keeps its legacy values for migration simplicity, but only **CREATED / EDITED / DELETED / IMPORTED** are ever written; `src/lib/audit-constants.ts` lists just those for the log's action filter.
@@ -204,7 +208,7 @@ Use Prisma enums for `Role`, `WasteType`, `WaterSource`, `MeasurementMethod`, `A
 
 ## Record lifecycle (no approval workflow)
 
-Records are created and immediately live — no review step. Create → `AuditLog(action='CREATED')`; edit (always allowed) → `AuditLog(action='EDITED')`; bulk/connector → `AuditLog(action='IMPORTED')`. There is no record locking and no `/approvals` page. The only manual-entry gate is that a **waste record requires a WTN PDF** (enforced in the form + `POST /api/waste`, not in the shared `wasteSchema`, so import/connector still work).
+Records are created and immediately live — no review step. Create → `AuditLog(action='CREATED')`; edit (always allowed) → `AuditLog(action='EDITED')`; bulk/connector → `AuditLog(action='IMPORTED')`; **delete** (hard delete from the row-actions menu) → `AuditLog(action='DELETED')` (the row is removed but the deletion stays in the Data Entry Log). There is no record locking and no `/approvals` page. Edit **and delete** are gated the same way: `enter_data` + `canAccessSite` via `DELETE /api/<metric>/[id]` (so the same people who can add/edit can delete on their assigned sites). Deleting a waste record also best-effort removes its WTN R2 object. The only manual-entry gate is that a **waste record requires a WTN PDF** (enforced in the form + `POST /api/waste`, not in the shared `wasteSchema`, so import/connector still work).
 
 ---
 
@@ -242,6 +246,7 @@ Dashboards as built (each is an array of `<ChartCard>` so adding charts is a con
 - **Waste** — **two bar charts** (hazardous + non-hazardous; recyclable excluded), monthly weight grouped by site.
 - **Water** — **one nested bar chart**: x = month, grouped by site, each site split into per-source bars (coloured by source). Defaults to the most recent 6 months.
 - **Electricity** — **one grouped-and-stacked bar chart**: one bar per site each month, stacked into renewable (solid) / non-renewable (faded) kWh. Defaults to the most recent 12 months.
+- **Gas** — **one grouped bar chart**: monthly consumption (m³), one bar per site. Defaults to the most recent 12 months.
 
 The `BarChart` wrapper (`src/components/charts/bar-chart.tsx`) supports optional per-series `color`/`stackId`/`opacity` (per-series `stackId` gives grouped-AND-stacked) and a compact `legendItems` static legend for the dense charts.
 
@@ -277,6 +282,7 @@ Permissions matrix:
 | Create/edit sites | ✅ | ❌ | ❌ |
 | View all sites' data | ✅ | ✅ (assigned sites only) | ✅ (assigned sites only) |
 | Enter data | ✅ | ✅ | ✅ |
+| Edit / delete records | ✅ | ✅ (assigned sites only) | ✅ (assigned sites only) |
 | Import bulk data | ✅ | ✅ | ✅ |
 | Export data | ✅ | ✅ | ✅ |
 | Run SAP connector sync | ✅ | ✅ | ❌ |
@@ -294,7 +300,7 @@ All permission checks go through `src/lib/permissions.ts`. Never inline a role c
 
 - **4 login users + 1 service account:** `admin@` (System Admin), `siteadmin@` (Site Admin – England: Manchester/Birmingham/London), `siteadmin2@` (Site Admin – Scotland & Wales: Glasgow/Cardiff), `data@` (Data Entry User: Manchester + Birmingham), plus non-login `system@envirohub.demo` (connector service account).
 - **5 sites:** Manchester manufacturing, Birmingham warehouse, London office, Glasgow plant, Cardiff distribution centre
-- **~200 air**, **~150 waste** (each with an EWC code), **~120 water**, **~120 electricity** records across 2023-2025
+- A full **(site × month × category) grid** across 2023-2025: **720 air** (per site/month/pollutant), **540 waste** (per site/month/type, each with an EWC code), **900 water** (per site/month/source — all five sources), **180 electricity** (per site/month), **180 gas** (per site/month) — uniform so the dashboards have no gaps
 - A **Data Entry Log** entry per record (mostly `CREATED`, some `IMPORTED`, a few `EDITED`), attributed to a user assigned to that record's site (so each Site Admin's scoped log is realistic).
 
 All seed records are deterministic (seeded random) so demos are repeatable.
@@ -374,4 +380,4 @@ The PoC uses a NextAuth credentials provider with seeded users sharing a demo pa
 
 ---
 
-*Last updated: 2026-06-11 — major simplification: **removed the approval workflow** (no status/authorship columns, no `/approvals`, no Dashboard overview — login lands on `/air-emissions`); **multi-select filters** (repeated-key URL params) replacing single-select, status filter dropped; **Audit Log → Data Entry Log** (CREATED/EDITED/DELETED/IMPORTED only); **waste** gains a required `ewcCode` + required WTN reference & PDF (form/API-enforced); **electricity** drops peak/off-peak; dashboards reworked (air = per-pollutant line charts; waste = hazardous + non-hazardous bars; water = nested site×source bars, last 6mo; electricity = grouped-and-stacked renewable/non-renewable, last 12mo) on an upgraded `BarChart` wrapper; all table columns now mirror the entry forms. Migration `20260611085858_simplify_drop_workflow_add_ewc`. Update this date when material decisions change.*
+*Last updated: 2026-06-12 — added a **Delete record** action to every metric's row-actions menu (`DELETE /api/<metric>/[id]`, gated like edit — `enter_data` + site access — logged as `DELETED`; waste delete best-effort removes the WTN R2 object). 2026-06-11 — added a **fifth metric, Gas** (site / meterId / consumptionM3 / period; own table, dashboard = grouped bar per site, nav tab, CRUD API, export, CSV/Excel import + SAP-connector mock; migration `add_gas_metric`); seed is now a uniform (site × month × category) grid and water covers all five sources. Earlier same-day: major simplification: **removed the approval workflow** (no status/authorship columns, no `/approvals`, no Dashboard overview — login lands on `/air-emissions`); **multi-select filters** (repeated-key URL params) replacing single-select, status filter dropped; **Audit Log → Data Entry Log** (CREATED/EDITED/DELETED/IMPORTED only); **waste** gains a required `ewcCode` + required WTN reference & PDF (form/API-enforced); **electricity** drops peak/off-peak; dashboards reworked (air = per-pollutant line charts; waste = hazardous + non-hazardous bars; water = nested site×source bars, last 6mo; electricity = grouped-and-stacked renewable/non-renewable, last 12mo) on an upgraded `BarChart` wrapper; all table columns now mirror the entry forms. Migration `20260611085858_simplify_drop_workflow_add_ewc`. Update this date when material decisions change.*

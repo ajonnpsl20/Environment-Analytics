@@ -7,6 +7,7 @@ export const METRIC_KEYS = [
   "waste",
   "water",
   "electricity",
+  "gas",
 ] as const;
 
 export type MetricKey = (typeof METRIC_KEYS)[number];
@@ -16,6 +17,7 @@ export const METRIC_LABEL: Record<MetricKey, string> = {
   waste: "Waste",
   water: "Water",
   electricity: "Electricity",
+  gas: "Gas",
 };
 
 /** Label for any feed key, falling back to the raw key if it is unknown. */

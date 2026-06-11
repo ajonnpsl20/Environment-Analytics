@@ -1,14 +1,17 @@
 "use client";
 
-import { useState } from "react";
-import { useSearchParams } from "next/navigation";
-import { Plus, FileSpreadsheet, FileText, Upload } from "lucide-react";
+import { useState, useTransition } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { format } from "date-fns";
+import { toast } from "sonner";
+import { Plus, FileSpreadsheet, FileText, Upload, Loader2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
   DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -50,14 +53,40 @@ export function ElectricityClient({
   canEnter: boolean;
 }) {
   const params = useSearchParams();
+  const router = useRouter();
+  const [pending, startTransition] = useTransition();
   const [addOpen, setAddOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
   const [editRecord, setEditRecord] = useState<ElectricityRow | null>(null);
+  const [deleteRecord, setDeleteRecord] = useState<ElectricityRow | null>(null);
 
   const columns = getElectricityColumns({
     onEdit: setEditRecord,
+    onDelete: setDeleteRecord,
     canEdit: canEnter,
   });
+
+  function confirmDelete() {
+    if (!deleteRecord) return;
+    const id = deleteRecord.id;
+    startTransition(async () => {
+      try {
+        const res = await fetch(`/api/electricity/${id}`, { method: "DELETE" });
+        if (res.ok) {
+          toast.success("Record deleted");
+          router.refresh();
+          setDeleteRecord(null);
+          return;
+        }
+        const data = (await res.json().catch(() => ({}))) as { error?: string };
+        toast.error(data.error ?? "Could not delete the record.");
+      } catch {
+        toast.error(
+          "Couldn't reach the server. Check your connection and try again.",
+        );
+      }
+    });
+  }
 
   function exportHref(formatExt: "xlsx" | "csv") {
     const q = new URLSearchParams(params.toString());
@@ -175,6 +204,39 @@ export function ElectricityClient({
               onSuccess={() => setEditRecord(null)}
             />
           )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={!!deleteRecord}
+        onOpenChange={(open) => !open && setDeleteRecord(null)}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete electricity record</DialogTitle>
+            <DialogDescription>
+              {deleteRecord
+                ? `Delete the record for ${deleteRecord.site.name} (${format(deleteRecord.periodStart, "d MMM yyyy")})? This can't be undone.`
+                : ""}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setDeleteRecord(null)}
+              disabled={pending}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={confirmDelete}
+              disabled={pending}
+            >
+              {pending && <Loader2 className="animate-spin" />}
+              Delete
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </>

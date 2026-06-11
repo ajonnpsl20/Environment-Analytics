@@ -4,6 +4,7 @@ import {
   Trash2,
   Droplets,
   Zap,
+  Flame,
   Plug,
   ScrollText,
   type LucideIcon,
@@ -26,6 +27,7 @@ export const NAV_ITEMS: NavItem[] = [
   { title: "Waste", href: "/waste", icon: Trash2, action: "enter_data", available: true },
   { title: "Water", href: "/water", icon: Droplets, action: "enter_data", available: true },
   { title: "Electricity", href: "/electricity", icon: Zap, action: "enter_data", available: true },
+  { title: "Gas", href: "/gas", icon: Flame, action: "enter_data", available: true },
   { title: "Connectors", href: "/connectors", icon: Plug, action: "run_connector", available: true },
   { title: "Data Entry Log", href: "/audit-log", icon: ScrollText, action: "view_audit_log", available: true },
 ];

@@ -88,6 +88,7 @@ model Site {
   wasteRecords       WasteRecord[]
   waterUsageRecords  WaterUsageRecord[]
   electricityRecords ElectricityRecord[]
+  gasRecords         GasRecord[]
 }
 
 model SiteAssignment {
@@ -180,6 +181,22 @@ model ElectricityRecord {
   periodEnd         DateTime
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
+
+  site Site @relation(fields: [siteId], references: [id])
+
+  @@index([siteId])
+  @@index([periodStart])
+}
+
+model GasRecord {
+  id            String   @id @default(cuid())
+  siteId        String
+  meterId       String
+  consumptionM3 Float
+  periodStart   DateTime
+  periodEnd     DateTime
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 
   site Site @relation(fields: [siteId], references: [id])
 

@@ -5,6 +5,7 @@ import { logAction } from "@/lib/audit";
 import { canAccessSite } from "@/lib/site-scope";
 import { requireApiUser, badRequest } from "@/lib/api";
 import { wasteSchema } from "@/lib/validations/waste";
+import { isR2Configured, deleteWtnKey } from "@/lib/r2";
 
 type Context = { params: Promise<{ id: string }> };
 
@@ -77,4 +78,39 @@ export async function PATCH(req: NextRequest, { params }: Context) {
   });
 
   return NextResponse.json({ record });
+}
+
+// DELETE /api/waste/[id] — delete a record.
+export async function DELETE(_req: NextRequest, { params }: Context) {
+  const result = await requireApiUser("enter_data");
+  if ("response" in result) return result.response;
+  const { user } = result;
+  const { id } = await params;
+
+  const before = await db.wasteRecord.findUnique({ where: { id } });
+  if (!before || !(await canAccessSite(user, before.siteId))) {
+    return NextResponse.json({ error: "Record not found." }, { status: 404 });
+  }
+
+  await db.wasteRecord.delete({ where: { id } });
+
+  // Best-effort: remove the attached WTN document so it isn't orphaned. A failed
+  // R2 delete must not fail the request (the record is already gone).
+  if (before.wtnDocumentR2Key && isR2Configured()) {
+    try {
+      await deleteWtnKey(before.wtnDocumentR2Key);
+    } catch (err) {
+      console.error("Failed to delete WTN object from R2:", err);
+    }
+  }
+
+  await logAction({
+    entityType: "WasteRecord",
+    entityId: id,
+    action: "DELETED",
+    userId: user.id,
+    before,
+  });
+
+  return NextResponse.json({ ok: true });
 }

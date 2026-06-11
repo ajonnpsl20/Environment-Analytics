@@ -4,31 +4,31 @@ import { db } from "@/lib/db";
 import { logAction } from "@/lib/audit";
 import { canAccessSite } from "@/lib/site-scope";
 import { requireApiUser, badRequest } from "@/lib/api";
-import { electricitySchema } from "@/lib/validations/electricity";
+import { gasSchema } from "@/lib/validations/gas";
 
 type Context = { params: Promise<{ id: string }> };
 
-// GET /api/electricity/[id] — single record (role-scoped).
+// GET /api/gas/[id] — single record (role-scoped).
 export async function GET(_req: NextRequest, { params }: Context) {
   const result = await requireApiUser("view_all_sites");
   if ("response" in result) return result.response;
   const { id } = await params;
 
-  const record = await db.electricityRecord.findUnique({ where: { id } });
+  const record = await db.gasRecord.findUnique({ where: { id } });
   if (!record || !(await canAccessSite(result.user, record.siteId))) {
     return NextResponse.json({ error: "Record not found." }, { status: 404 });
   }
   return NextResponse.json({ record });
 }
 
-// PATCH /api/electricity/[id] — edit a record.
+// PATCH /api/gas/[id] — edit a record.
 export async function PATCH(req: NextRequest, { params }: Context) {
   const result = await requireApiUser("enter_data");
   if ("response" in result) return result.response;
   const { user } = result;
   const { id } = await params;
 
-  const before = await db.electricityRecord.findUnique({ where: { id } });
+  const before = await db.gasRecord.findUnique({ where: { id } });
   if (!before || !(await canAccessSite(user, before.siteId))) {
     return NextResponse.json({ error: "Record not found." }, { status: 404 });
   }
@@ -40,7 +40,7 @@ export async function PATCH(req: NextRequest, { params }: Context) {
     return NextResponse.json({ error: "Invalid JSON body." }, { status: 400 });
   }
 
-  const parsed = electricitySchema.safeParse(body);
+  const parsed = gasSchema.safeParse(body);
   if (!parsed.success) return badRequest(parsed.error);
   const data = parsed.data;
 
@@ -51,21 +51,19 @@ export async function PATCH(req: NextRequest, { params }: Context) {
     );
   }
 
-  const record = await db.electricityRecord.update({
+  const record = await db.gasRecord.update({
     where: { id },
     data: {
       siteId: data.siteId,
       meterId: data.meterId,
-      consumptionKwh: data.consumptionKwh,
-      renewablePercent: data.renewablePercent ?? null,
-      supplier: data.supplier ?? null,
+      consumptionM3: data.consumptionM3,
       periodStart: data.periodStart,
       periodEnd: data.periodEnd,
     },
   });
 
   await logAction({
-    entityType: "ElectricityRecord",
+    entityType: "GasRecord",
     entityId: id,
     action: "EDITED",
     userId: user.id,
@@ -76,22 +74,22 @@ export async function PATCH(req: NextRequest, { params }: Context) {
   return NextResponse.json({ record });
 }
 
-// DELETE /api/electricity/[id] — delete a record.
+// DELETE /api/gas/[id] — delete a record.
 export async function DELETE(_req: NextRequest, { params }: Context) {
   const result = await requireApiUser("enter_data");
   if ("response" in result) return result.response;
   const { user } = result;
   const { id } = await params;
 
-  const before = await db.electricityRecord.findUnique({ where: { id } });
+  const before = await db.gasRecord.findUnique({ where: { id } });
   if (!before || !(await canAccessSite(user, before.siteId))) {
     return NextResponse.json({ error: "Record not found." }, { status: 404 });
   }
 
-  await db.electricityRecord.delete({ where: { id } });
+  await db.gasRecord.delete({ where: { id } });
 
   await logAction({
-    entityType: "ElectricityRecord",
+    entityType: "GasRecord",
     entityId: id,
     action: "DELETED",
     userId: user.id,

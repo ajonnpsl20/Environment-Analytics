@@ -5,7 +5,6 @@ import type { ColumnDef } from "@tanstack/react-table";
 import { format } from "date-fns";
 import { MoreHorizontal, Pencil, Trash2 } from "lucide-react";
 
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -15,34 +14,28 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { SortableHeader } from "@/components/tables/data-table";
 
-// Mirrors the include in `listAirEmissions` (kept client-safe via type-only import).
-export type AirEmissionRow = Prisma.AirEmissionRecordGetPayload<{
+// Mirrors the include in `listGas` (client-safe via type-only import).
+export type GasRow = Prisma.GasRecordGetPayload<{
   include: {
     site: { select: { name: true; siteId: true } };
   };
 }>;
 
-const num = (n: number | null) =>
-  n == null ? (
-    <span className="text-muted-foreground">—</span>
-  ) : (
-    <span className="tabular-nums">{n.toLocaleString()}</span>
-  );
-
-export function getAirEmissionColumns(handlers: {
-  onEdit: (record: AirEmissionRow) => void;
-  onDelete: (record: AirEmissionRow) => void;
+export function getGasColumns(handlers: {
+  onEdit: (record: GasRow) => void;
+  onDelete: (record: GasRow) => void;
   canEdit: boolean;
-}): ColumnDef<AirEmissionRow>[] {
+}): ColumnDef<GasRow>[] {
   return [
     {
-      accessorKey: "measuredAt",
+      accessorKey: "periodStart",
       header: ({ column }) => (
-        <SortableHeader column={column}>Measured</SortableHeader>
+        <SortableHeader column={column}>Period</SortableHeader>
       ),
       cell: ({ row }) => (
         <span className="tabular-nums text-muted-foreground">
-          {format(row.original.measuredAt, "d MMM yyyy")}
+          {format(row.original.periodStart, "d MMM")} –{" "}
+          {format(row.original.periodEnd, "d MMM yyyy")}
         </span>
       ),
     },
@@ -59,66 +52,23 @@ export function getAirEmissionColumns(handlers: {
       ),
     },
     {
-      accessorKey: "stackId",
-      header: "Stack",
+      accessorKey: "meterId",
+      header: "Meter",
       cell: ({ row }) => (
-        <span className="font-mono text-xs">{row.original.stackId}</span>
+        <span className="font-mono text-xs text-muted-foreground">
+          {row.original.meterId}
+        </span>
       ),
     },
     {
-      accessorKey: "pollutantType",
+      accessorKey: "consumptionM3",
       header: ({ column }) => (
-        <SortableHeader column={column}>Pollutant</SortableHeader>
-      ),
-      cell: ({ row }) => (
-        <Badge variant="outline">{row.original.pollutantType}</Badge>
-      ),
-    },
-    {
-      accessorKey: "concentration",
-      header: ({ column }) => (
-        <SortableHeader column={column}>Concentration</SortableHeader>
+        <SortableHeader column={column}>Consumption</SortableHeader>
       ),
       cell: ({ row }) => (
         <span className="tabular-nums">
-          {row.original.concentration.toLocaleString()}
-        </span>
-      ),
-    },
-    {
-      accessorKey: "concentrationUnit",
-      header: "Unit",
-      cell: ({ row }) => (
-        <span className="text-muted-foreground">
-          {row.original.concentrationUnit}
-        </span>
-      ),
-    },
-    {
-      accessorKey: "flowRate",
-      header: "Flow rate",
-      cell: ({ row }) => num(row.original.flowRate),
-    },
-    {
-      accessorKey: "totalEmissions",
-      header: "Total emissions",
-      cell: ({ row }) => num(row.original.totalEmissions),
-    },
-    {
-      accessorKey: "measurementMethod",
-      header: "Method",
-      cell: ({ row }) => (
-        <span className="text-muted-foreground capitalize">
-          {row.original.measurementMethod.toLowerCase()}
-        </span>
-      ),
-    },
-    {
-      accessorKey: "equipmentReference",
-      header: "Equipment ref",
-      cell: ({ row }) => (
-        <span className="font-mono text-xs text-muted-foreground">
-          {row.original.equipmentReference ?? "—"}
+          {row.original.consumptionM3.toLocaleString()}{" "}
+          <span className="text-xs text-muted-foreground">m³</span>
         </span>
       ),
     },

@@ -4,6 +4,7 @@ import { airEmissionDescriptor } from "./descriptors/air-emission";
 import { wasteDescriptor } from "./descriptors/waste";
 import { waterDescriptor } from "./descriptors/water";
 import { electricityDescriptor } from "./descriptors/electricity";
+import { gasDescriptor } from "./descriptors/gas";
 
 // The single source of truth for which metrics can be imported / synced today.
 // Adding a metric = import its descriptor and add one entry here.
@@ -12,6 +13,7 @@ const REGISTRY = new Map<string, MetricDescriptor<unknown>>([
   [wasteDescriptor.key, wasteDescriptor],
   [waterDescriptor.key, waterDescriptor],
   [electricityDescriptor.key, electricityDescriptor],
+  [gasDescriptor.key, gasDescriptor],
 ]);
 
 export function getDescriptor(key: string): MetricDescriptor<unknown> | undefined {
