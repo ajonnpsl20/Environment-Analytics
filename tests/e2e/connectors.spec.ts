@@ -8,7 +8,7 @@ async function loginAsAdmin(page: import("@playwright/test").Page) {
   await page.getByLabel("Email").fill("admin@envirohub.demo");
   await page.getByLabel("Password").fill(process.env.SEED_DEMO_PASSWORD ?? "");
   await page.getByRole("button", { name: "Sign in" }).click();
-  await expect(page).toHaveURL(/\/dashboard/, { timeout: 20_000 });
+  await expect(page).toHaveURL(/\/air-emissions/, { timeout: 20_000 });
 }
 
 test("connectors: SAP card lists metrics with a Sync for each registered one", async ({
@@ -53,7 +53,7 @@ test("connectors: data entry user does NOT see the Connectors nav item", async (
   await page.getByLabel("Email").fill("data@envirohub.demo");
   await page.getByLabel("Password").fill(process.env.SEED_DEMO_PASSWORD ?? "");
   await page.getByRole("button", { name: "Sign in" }).click();
-  await expect(page).toHaveURL(/\/dashboard/, { timeout: 20_000 });
+  await expect(page).toHaveURL(/\/air-emissions/, { timeout: 20_000 });
 
   await expect(page.getByRole("link", { name: "Connectors" })).toHaveCount(0);
 });

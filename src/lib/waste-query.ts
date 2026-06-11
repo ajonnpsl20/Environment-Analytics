@@ -3,26 +3,24 @@ import type { Prisma, Role } from "@prisma/client";
 
 import { db } from "@/lib/db";
 import { buildSiteScopeWhere } from "@/lib/site-scope";
-import { isRecordStatus } from "@/lib/record-status";
+import { scopedSiteIn } from "@/lib/filter-scope";
 import { WASTE_TYPES, type WasteTypeName } from "@/lib/validations/waste";
 
 export type WasteFilters = {
   from?: string;
   to?: string;
-  siteId?: string;
-  wasteType?: string;
-  status?: string;
+  siteId?: string[];
+  wasteType?: string[];
 };
 
 export function parseWasteFilters(
-  get: (key: string) => string | undefined,
+  getAll: (key: string) => string[],
 ): WasteFilters {
   return {
-    from: get("from"),
-    to: get("to"),
-    siteId: get("site"),
-    wasteType: get("wasteType"),
-    status: get("status"),
+    from: getAll("from")[0],
+    to: getAll("to")[0],
+    siteId: getAll("site"),
+    wasteType: getAll("wasteType"),
   };
 }
 
@@ -33,16 +31,12 @@ export async function buildWasteWhere(
   const scope = await buildSiteScopeWhere(user);
 
   const where: Prisma.WasteRecordWhereInput = { ...scope };
-  if (filters.siteId) where.siteId = filters.siteId;
-  if (
-    filters.wasteType &&
-    (WASTE_TYPES as readonly string[]).includes(filters.wasteType)
-  ) {
-    where.wasteType = filters.wasteType as WasteTypeName;
-  }
-  if (filters.status && isRecordStatus(filters.status)) {
-    where.status = filters.status;
-  }
+  const siteIn = scopedSiteIn(filters.siteId, scope);
+  if (siteIn) where.siteId = siteIn;
+  const types = (filters.wasteType ?? []).filter((t) =>
+    (WASTE_TYPES as readonly string[]).includes(t),
+  ) as WasteTypeName[];
+  if (types.length) where.wasteType = { in: types };
   if (filters.from || filters.to) {
     where.transferDate = {
       ...(filters.from ? { gte: new Date(filters.from) } : {}),
@@ -50,18 +44,11 @@ export async function buildWasteWhere(
     };
   }
 
-  // A non-SystemAdmin with an explicit site filter must stay within scope.
-  if (filters.siteId && scope.siteId && !scope.siteId.in.includes(filters.siteId)) {
-    where.siteId = { in: [] };
-  }
-
   return where;
 }
 
 const listInclude = {
   site: { select: { name: true, siteId: true } },
-  submittedBy: { select: { name: true } },
-  approvedBy: { select: { name: true } },
 } satisfies Prisma.WasteRecordInclude;
 
 export type WasteRow = Prisma.WasteRecordGetPayload<{

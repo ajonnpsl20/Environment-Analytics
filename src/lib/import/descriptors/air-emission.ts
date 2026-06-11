@@ -81,10 +81,7 @@ function normalize(
   return { ok: true, data: parsed.data, siteId: parsed.data.siteId };
 }
 
-async function create(
-  input: AirEmissionInput,
-  submittedById: string,
-): Promise<{ id: string }> {
+async function create(input: AirEmissionInput): Promise<{ id: string }> {
   return db.airEmissionRecord.create({
     data: {
       siteId: input.siteId,
@@ -97,8 +94,6 @@ async function create(
       totalEmissions: input.totalEmissions ?? null,
       measurementMethod: input.measurementMethod,
       equipmentReference: input.equipmentReference ?? null,
-      status: "SUBMITTED",
-      submittedById,
     },
     select: { id: true },
   });

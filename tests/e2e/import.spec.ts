@@ -8,7 +8,7 @@ async function loginAsAdmin(page: import("@playwright/test").Page) {
   await page.getByLabel("Email").fill("admin@envirohub.demo");
   await page.getByLabel("Password").fill(process.env.SEED_DEMO_PASSWORD ?? "");
   await page.getByRole("button", { name: "Sign in" }).click();
-  await expect(page).toHaveURL(/\/dashboard/, { timeout: 20_000 });
+  await expect(page).toHaveURL(/\/air-emissions/, { timeout: 20_000 });
 }
 
 // Two valid rows + one invalid (unknown site code) so the preview shows a split.
@@ -66,7 +66,7 @@ test("import: data entry user can import for assigned sites", async ({ page }) =
   await page.getByLabel("Email").fill("data@envirohub.demo");
   await page.getByLabel("Password").fill(process.env.SEED_DEMO_PASSWORD ?? "");
   await page.getByRole("button", { name: "Sign in" }).click();
-  await expect(page).toHaveURL(/\/dashboard/, { timeout: 20_000 });
+  await expect(page).toHaveURL(/\/air-emissions/, { timeout: 20_000 });
 
   await page.getByRole("link", { name: "Air Emissions" }).click();
   await page.getByRole("button", { name: "Import", exact: true }).click();

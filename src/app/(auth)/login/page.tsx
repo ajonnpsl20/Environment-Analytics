@@ -51,7 +51,7 @@ export default function LoginPage() {
       return;
     }
     toast.success("Signed in");
-    router.push("/dashboard");
+    router.push("/air-emissions");
     router.refresh();
   }
 

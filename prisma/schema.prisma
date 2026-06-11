@@ -21,13 +21,6 @@ enum Role {
   DataEntryUser
 }
 
-enum RecordStatus {
-  SUBMITTED
-  APPROVED
-  REJECTED
-  RETURNED
-}
-
 enum WasteType {
   HAZARDOUS
   NON_HAZARDOUS
@@ -75,15 +68,6 @@ model User {
   updatedAt      DateTime @updatedAt
 
   siteAssignments SiteAssignment[]
-
-  airEmissionsSubmitted AirEmissionRecord[] @relation("AirEmissionSubmittedBy")
-  airEmissionsApproved  AirEmissionRecord[] @relation("AirEmissionApprovedBy")
-  wasteSubmitted        WasteRecord[]       @relation("WasteSubmittedBy")
-  wasteApproved         WasteRecord[]       @relation("WasteApprovedBy")
-  waterSubmitted        WaterUsageRecord[]  @relation("WaterSubmittedBy")
-  waterApproved         WaterUsageRecord[]  @relation("WaterApprovedBy")
-  electricitySubmitted  ElectricityRecord[] @relation("ElectricitySubmittedBy")
-  electricityApproved   ElectricityRecord[] @relation("ElectricityApprovedBy")
 
   auditLogs AuditLog[]
 }
@@ -136,19 +120,12 @@ model AirEmissionRecord {
   totalEmissions     Float?
   measurementMethod  MeasurementMethod
   equipmentReference String?
-  status             RecordStatus      @default(SUBMITTED)
-  submittedById      String
-  approvedById       String?
-  approvedAt         DateTime?
   createdAt          DateTime          @default(now())
   updatedAt          DateTime          @updatedAt
 
-  site        Site  @relation(fields: [siteId], references: [id])
-  submittedBy User  @relation("AirEmissionSubmittedBy", fields: [submittedById], references: [id])
-  approvedBy  User? @relation("AirEmissionApprovedBy", fields: [approvedById], references: [id])
+  site Site @relation(fields: [siteId], references: [id])
 
   @@index([siteId])
-  @@index([status])
   @@index([measuredAt])
 }
 
@@ -156,6 +133,7 @@ model WasteRecord {
   id               String       @id @default(cuid())
   siteId           String
   wasteType        WasteType
+  ewcCode          String
   streamCategory   String
   weightKg         Float
   disposalMethod   String
@@ -163,19 +141,12 @@ model WasteRecord {
   wtnReference     String
   transferDate     DateTime
   wtnDocumentR2Key String?
-  status           RecordStatus @default(SUBMITTED)
-  submittedById    String
-  approvedById     String?
-  approvedAt       DateTime?
-  createdAt        DateTime     @default(now())
-  updatedAt        DateTime     @updatedAt
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
 
-  site        Site  @relation(fields: [siteId], references: [id])
-  submittedBy User  @relation("WasteSubmittedBy", fields: [submittedById], references: [id])
-  approvedBy  User? @relation("WasteApprovedBy", fields: [approvedById], references: [id])
+  site Site @relation(fields: [siteId], references: [id])
 
   @@index([siteId])
-  @@index([status])
   @@index([transferDate])
 }
 
@@ -189,19 +160,12 @@ model WaterUsageRecord {
   source        WaterSource
   periodStart   DateTime
   periodEnd     DateTime
-  status        RecordStatus @default(SUBMITTED)
-  submittedById String
-  approvedById  String?
-  approvedAt    DateTime?
-  createdAt     DateTime     @default(now())
-  updatedAt     DateTime     @updatedAt
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
 
-  site        Site  @relation(fields: [siteId], references: [id])
-  submittedBy User  @relation("WaterSubmittedBy", fields: [submittedById], references: [id])
-  approvedBy  User? @relation("WaterApprovedBy", fields: [approvedById], references: [id])
+  site Site @relation(fields: [siteId], references: [id])
 
   @@index([siteId])
-  @@index([status])
   @@index([periodStart])
 }
 
@@ -210,25 +174,16 @@ model ElectricityRecord {
   siteId            String
   meterId           String
   consumptionKwh    Float
-  peakKwh           Float?
-  offPeakKwh        Float?
   renewablePercent  Float?
   supplier          String?
   periodStart       DateTime
   periodEnd         DateTime
-  status            RecordStatus @default(SUBMITTED)
-  submittedById     String
-  approvedById      String?
-  approvedAt        DateTime?
-  createdAt         DateTime     @default(now())
-  updatedAt         DateTime     @updatedAt
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
 
-  site        Site  @relation(fields: [siteId], references: [id])
-  submittedBy User  @relation("ElectricitySubmittedBy", fields: [submittedById], references: [id])
-  approvedBy  User? @relation("ElectricityApprovedBy", fields: [approvedById], references: [id])
+  site Site @relation(fields: [siteId], references: [id])
 
   @@index([siteId])
-  @@index([status])
   @@index([periodStart])
 }
 

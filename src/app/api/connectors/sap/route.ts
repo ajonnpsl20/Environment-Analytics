@@ -8,8 +8,8 @@ import { getSapMetricRows } from "@/lib/import/sap-feed";
 
 // POST /api/connectors/sap?metric=<key> — mock SAP sync for one metric.
 // Reads src/data/sap-mock.json, normalizes via the metric's import descriptor,
-// creates SUBMITTED records attributed to the system user, and records the sync
-// event (even a zero-row sync) in ConnectorSync.
+// creates records (the site-access check runs as the system account), and records
+// the sync event (even a zero-row sync) in ConnectorSync.
 export async function POST(req: NextRequest) {
   const result = await requireApiUser("run_connector");
   if ("response" in result) return result.response;
@@ -49,7 +49,6 @@ export async function POST(req: NextRequest) {
 
   const rows = getSapMetricRows(metric);
   const commit = await commitRows(descriptor, rows, systemUser, {
-    submittedById: systemUser.id,
     auditUserId: user.id,
     notes: "via SAP connector (Demo)",
   });

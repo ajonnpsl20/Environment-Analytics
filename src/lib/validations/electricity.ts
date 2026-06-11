@@ -15,19 +15,12 @@ const emptyOrNumberish = (v: string) =>
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Server schema — coerces strings from the form/API into typed values.
-// peakKwh / offPeakKwh / renewablePercent / supplier are optional.
+// renewablePercent / supplier are optional.
 // ─────────────────────────────────────────────────────────────────────────────
-const optionalNumber = z.preprocess(
-  (v) => (v === "" || v === null || v === undefined ? undefined : v),
-  z.coerce.number().min(0, "Must be ≥ 0").optional(),
-);
-
 export const electricitySchema = z.object({
   siteId: z.string().trim().min(1, "Site is required"),
   meterId: z.string().trim().min(1, "Meter ID is required").max(32),
   consumptionKwh: z.coerce.number().min(0, "Consumption must be ≥ 0"),
-  peakKwh: optionalNumber,
-  offPeakKwh: optionalNumber,
   renewablePercent: z.preprocess(
     (v) => (v === "" || v === null || v === undefined ? undefined : v),
     z.coerce
@@ -58,16 +51,6 @@ export const electricityFormSchema = z.object({
     .trim()
     .refine(numberish, "Must be a number")
     .refine((v) => Number(v) >= 0, "Must be ≥ 0"),
-  peakKwh: z
-    .string()
-    .trim()
-    .refine(emptyOrNumberish, "Must be a number")
-    .optional(),
-  offPeakKwh: z
-    .string()
-    .trim()
-    .refine(emptyOrNumberish, "Must be a number")
-    .optional(),
   renewablePercent: z
     .string()
     .trim()

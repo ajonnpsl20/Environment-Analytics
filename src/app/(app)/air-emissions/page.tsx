@@ -28,10 +28,13 @@ export default async function AirEmissionsPage({
   const user = { id: session.user.id, role: session.user.role };
 
   const sp = await searchParams;
-  const getStr = (k: string) =>
-    typeof sp[k] === "string" && sp[k] !== "" ? (sp[k] as string) : undefined;
+  const getAll = (k: string): string[] => {
+    const v = sp[k];
+    if (Array.isArray(v)) return v.filter((s) => s !== "");
+    return typeof v === "string" && v !== "" ? [v] : [];
+  };
 
-  const filters = parseAirEmissionFilters(getStr);
+  const filters = parseAirEmissionFilters(getAll);
 
   const [records, scopedSites] = await Promise.all([
     listAirEmissions(user, filters),

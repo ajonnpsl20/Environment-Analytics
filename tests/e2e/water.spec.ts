@@ -8,7 +8,7 @@ async function loginAsAdmin(page: import("@playwright/test").Page) {
   await page.getByLabel("Email").fill("admin@envirohub.demo");
   await page.getByLabel("Password").fill(process.env.SEED_DEMO_PASSWORD ?? "");
   await page.getByRole("button", { name: "Sign in" }).click();
-  await expect(page).toHaveURL(/\/dashboard/, { timeout: 20_000 });
+  await expect(page).toHaveURL(/\/air-emissions/, { timeout: 20_000 });
 }
 
 test("water: data table and dashboard bar chart render seeded data", async ({
@@ -21,12 +21,14 @@ test("water: data table and dashboard bar chart render seeded data", async ({
     page.getByRole("heading", { name: "Water", level: 2 }),
   ).toBeVisible({ timeout: 20_000 });
 
-  // Seeded approved water records render (filter so it's deterministic).
-  await page.goto("/water?status=APPROVED");
-  await expect(page.getByText("Approved").first()).toBeVisible();
+  // Seeded water records render — filter by source for a deterministic assertion.
+  await page.goto("/water?source=MAINS");
+  await expect(page.getByText("Mains").first()).toBeVisible();
 
   await page.getByRole("tab", { name: "Dashboard" }).click();
-  await expect(page.getByText("Water consumption over time")).toBeVisible();
+  await expect(
+    page.getByText("Water consumption by site & source"),
+  ).toBeVisible();
 });
 
 test("water: new-record form opens", async ({ page }) => {
@@ -54,11 +56,11 @@ test("water: import template endpoint returns a spreadsheet", async ({ page }) =
   expect(res.headers()["content-type"]).toContain("spreadsheetml");
 });
 
-test("water: approvals queue has a Water tab with pending records", async ({
-  page,
-}) => {
+test("water: source filter narrows the table", async ({ page }) => {
   await loginAsAdmin(page);
-  await page.goto("/approvals");
-  await page.getByRole("tab", { name: /Water/ }).click();
-  await expect(page.getByRole("button", { name: "Approve" }).first()).toBeVisible();
+  await page.goto("/water?source=BOREHOLE");
+  await expect(
+    page.getByRole("heading", { name: "Water", level: 2 }),
+  ).toBeVisible({ timeout: 20_000 });
+  await expect(page.getByText("Borehole").first()).toBeVisible();
 });

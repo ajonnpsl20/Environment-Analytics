@@ -37,8 +37,6 @@ const EMPTY: ElectricityFormValues = {
   siteId: "",
   meterId: "",
   consumptionKwh: "",
-  peakKwh: "",
-  offPeakKwh: "",
   renewablePercent: "",
   supplier: "",
   periodStart: "",
@@ -165,35 +163,6 @@ export function ElectricityForm({
                 <FormLabel>Renewable % (optional)</FormLabel>
                 <FormControl>
                   <Input inputMode="decimal" placeholder="42.5" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        </div>
-
-        <div className="grid gap-4 sm:grid-cols-2">
-          <FormField
-            control={form.control}
-            name="peakKwh"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Peak (kWh, optional)</FormLabel>
-                <FormControl>
-                  <Input inputMode="decimal" placeholder="68200" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          <FormField
-            control={form.control}
-            name="offPeakKwh"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Off-peak (kWh, optional)</FormLabel>
-                <FormControl>
-                  <Input inputMode="decimal" placeholder="60200" {...field} />
                 </FormControl>
                 <FormMessage />
               </FormItem>

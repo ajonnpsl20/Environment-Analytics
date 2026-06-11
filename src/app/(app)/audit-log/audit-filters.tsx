@@ -4,16 +4,8 @@ import { useRouter, usePathname, useSearchParams } from "next/navigation";
 
 import { DatePicker } from "@/components/ui/date-picker";
 import { Button } from "@/components/ui/button";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { MultiSelect } from "@/components/ui/multi-select";
 import { AUDIT_ACTIONS, AUDIT_ENTITY_TYPES } from "@/lib/audit-constants";
-
-const ALL = "all";
 
 function Field({
   label,
@@ -41,73 +33,54 @@ export function AuditFilters({
 
   function setParam(key: string, value?: string | null) {
     const next = new URLSearchParams(params.toString());
-    if (!value || value === ALL) next.delete(key);
+    if (!value) next.delete(key);
     else next.set(key, value);
     next.delete("page");
     router.replace(next.toString() ? `${pathname}?${next}` : pathname);
   }
 
-  const hasFilters = ["action", "entityType", "user", "from", "to"].some((k) =>
-    params.get(k),
+  function setMulti(key: string, values: string[]) {
+    const next = new URLSearchParams(params.toString());
+    next.delete(key);
+    values.forEach((v) => next.append(key, v));
+    next.delete("page");
+    router.replace(next.toString() ? `${pathname}?${next}` : pathname);
+  }
+
+  const hasFilters = ["action", "entityType", "user", "from", "to"].some(
+    (k) => params.getAll(k).length > 0,
   );
 
   return (
     <div className="flex flex-wrap items-end gap-3 rounded-lg border bg-card p-3">
       <Field label="Action">
-        <Select
-          value={params.get("action") ?? ALL}
-          onValueChange={(v) => setParam("action", v)}
-        >
-          <SelectTrigger className="w-40">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value={ALL}>All actions</SelectItem>
-            {AUDIT_ACTIONS.map((a) => (
-              <SelectItem key={a} value={a}>
-                {a}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <MultiSelect
+          className="w-40"
+          label="actions"
+          options={AUDIT_ACTIONS.map((a) => ({ value: a, label: a }))}
+          selected={params.getAll("action")}
+          onChange={(v) => setMulti("action", v)}
+        />
       </Field>
 
       <Field label="Entity">
-        <Select
-          value={params.get("entityType") ?? ALL}
-          onValueChange={(v) => setParam("entityType", v)}
-        >
-          <SelectTrigger className="w-44">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value={ALL}>All entities</SelectItem>
-            {AUDIT_ENTITY_TYPES.map((e) => (
-              <SelectItem key={e} value={e}>
-                {e}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <MultiSelect
+          className="w-44"
+          label="entities"
+          options={AUDIT_ENTITY_TYPES.map((e) => ({ value: e, label: e }))}
+          selected={params.getAll("entityType")}
+          onChange={(v) => setMulti("entityType", v)}
+        />
       </Field>
 
       <Field label="User">
-        <Select
-          value={params.get("user") ?? ALL}
-          onValueChange={(v) => setParam("user", v)}
-        >
-          <SelectTrigger className="w-44">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value={ALL}>All users</SelectItem>
-            {users.map((u) => (
-              <SelectItem key={u.id} value={u.id}>
-                {u.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <MultiSelect
+          className="w-44"
+          label="users"
+          options={users.map((u) => ({ value: u.id, label: u.name }))}
+          selected={params.getAll("user")}
+          onChange={(v) => setMulti("user", v)}
+        />
       </Field>
 
       <Field label="From">

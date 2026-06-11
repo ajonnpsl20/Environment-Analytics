@@ -6,7 +6,7 @@ async function loginAsAdmin(page: import("@playwright/test").Page) {
   await page.getByLabel("Password").fill(process.env.SEED_DEMO_PASSWORD ?? "");
   await page.getByRole("button", { name: "Sign in" }).click();
   // Generous timeout: the dev server compiles routes on first navigation.
-  await expect(page).toHaveURL(/\/dashboard/, { timeout: 20_000 });
+  await expect(page).toHaveURL(/\/air-emissions/, { timeout: 20_000 });
 }
 
 test("air emissions: data table and dashboard chart render seeded data", async ({
@@ -21,15 +21,14 @@ test("air emissions: data table and dashboard chart render seeded data", async (
     page.getByRole("heading", { name: "Air Emissions", level: 2 }),
   ).toBeVisible({ timeout: 20_000 });
 
-  // Seeded approved records render. Filter by status so the assertion is
-  // deterministic regardless of pagination or later-imported SUBMITTED rows.
-  await page.goto("/air-emissions?status=APPROVED");
-  await expect(page.getByText("Approved").first()).toBeVisible();
+  // Seeded records render — filter by a pollutant for a deterministic assertion.
+  await page.goto("/air-emissions?pollutant=NOx");
+  await expect(page.getByText("NOx").first()).toBeVisible();
 
-  // Dashboard tab renders the line chart card.
+  // Dashboard tab renders a per-pollutant line chart card.
   await page.getByRole("tab", { name: "Dashboard" }).click();
   await expect(
-    page.getByText("Pollutant concentration over time"),
+    page.getByText(/concentration over time/).first(),
   ).toBeVisible();
 });
 
@@ -68,7 +67,7 @@ test("data entry user sees Air Emissions but is scoped to assigned sites", async
   await page.getByLabel("Email").fill("data@envirohub.demo");
   await page.getByLabel("Password").fill(process.env.SEED_DEMO_PASSWORD ?? "");
   await page.getByRole("button", { name: "Sign in" }).click();
-  await expect(page).toHaveURL(/\/dashboard/, { timeout: 20_000 });
+  await expect(page).toHaveURL(/\/air-emissions/, { timeout: 20_000 });
 
   await page.getByRole("link", { name: "Air Emissions" }).click();
   await expect(

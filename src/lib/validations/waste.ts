@@ -46,12 +46,15 @@ const numberish = (v: string) => v.trim() !== "" && !Number.isNaN(Number(v));
 export const wasteSchema = z.object({
   siteId: z.string().trim().min(1, "Site is required"),
   wasteType: z.enum(WASTE_TYPES),
+  ewcCode: z.string().trim().min(1, "EWC code is required").max(16),
   streamCategory: z.string().trim().min(1, "Stream is required").max(64),
   weightKg: z.coerce.number().min(0, "Weight must be ≥ 0"),
   disposalMethod: z.string().trim().min(1, "Disposal method is required").max(64),
   contractor: z.string().trim().min(1, "Contractor is required").max(80),
-  wtnReference: z.string().trim().max(64),
+  wtnReference: z.string().trim().min(1, "WTN reference is required").max(64),
   transferDate: z.coerce.date({ message: "A valid transfer date is required" }),
+  // Optional in the shared schema so bulk import + the SAP connector (which have
+  // no file) still validate; the manual web form/API enforces it (see waste route).
   wtnDocumentR2Key: z.preprocess(
     (v) => (v === "" || v === null ? undefined : v),
     z.string().trim().max(200).optional(),
@@ -66,6 +69,7 @@ export type WasteInput = z.infer<typeof wasteSchema>;
 export const wasteFormSchema = z.object({
   siteId: z.string().min(1, "Site is required"),
   wasteType: z.enum(WASTE_TYPES, { message: "Waste type is required" }),
+  ewcCode: z.string().trim().min(1, "EWC code is required").max(16),
   streamCategory: z.string().min(1, "Stream is required"),
   weightKg: z
     .string()
@@ -74,7 +78,7 @@ export const wasteFormSchema = z.object({
     .refine((v) => Number(v) >= 0, "Must be ≥ 0"),
   disposalMethod: z.string().min(1, "Disposal method is required"),
   contractor: z.string().min(1, "Contractor is required"),
-  wtnReference: z.string().trim().max(64),
+  wtnReference: z.string().trim().min(1, "WTN reference is required").max(64),
   transferDate: z.string().min(1, "Transfer date is required"),
   // Set by the upload step; hidden from the user.
   wtnDocumentR2Key: z.string().optional(),

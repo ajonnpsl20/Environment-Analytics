@@ -54,8 +54,8 @@ export type CommitResult = {
 /**
  * Everything metric-specific. `normalize` maps a header-keyed raw row to the
  * field-keyed schema input, resolving the human Site code → Site.id cuid via the
- * prebuilt `siteIdByCode` map, then validates. `create` writes one SUBMITTED
- * record (the engine handles the audit log, so attribution stays centralized).
+ * prebuilt `siteIdByCode` map, then validates. `create` writes one record (the
+ * engine handles the audit log, so attribution stays centralized).
  */
 export type MetricDescriptor<TInput> = {
   key: string;
@@ -67,7 +67,7 @@ export type MetricDescriptor<TInput> = {
     raw: RawRow,
     ctx: { siteIdByCode: Map<string, string> },
   ) => NormalizeResult<TInput>;
-  create: (input: TInput, submittedById: string) => Promise<{ id: string }>;
+  create: (input: TInput) => Promise<{ id: string }>;
 };
 
 /**

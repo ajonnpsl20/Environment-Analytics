@@ -3,7 +3,7 @@
 import type { Prisma } from "@prisma/client";
 import type { ColumnDef } from "@tanstack/react-table";
 import { format } from "date-fns";
-import { MoreHorizontal, Pencil, Lock } from "lucide-react";
+import { MoreHorizontal, Pencil } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -14,21 +14,20 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { SortableHeader } from "@/components/tables/data-table";
-import {
-  STATUS_BADGE_VARIANT,
-  STATUS_LABEL,
-  EDITABLE_STATUSES,
-  isRecordStatus,
-} from "@/lib/record-status";
 
 // Mirrors the include in `listAirEmissions` (kept client-safe via type-only import).
 export type AirEmissionRow = Prisma.AirEmissionRecordGetPayload<{
   include: {
     site: { select: { name: true; siteId: true } };
-    submittedBy: { select: { name: true } };
-    approvedBy: { select: { name: true } };
   };
 }>;
+
+const num = (n: number | null) =>
+  n == null ? (
+    <span className="text-muted-foreground">—</span>
+  ) : (
+    <span className="tabular-nums">{n.toLocaleString()}</span>
+  );
 
 export function getAirEmissionColumns(handlers: {
   onEdit: (record: AirEmissionRow) => void;
@@ -53,9 +52,16 @@ export function getAirEmissionColumns(handlers: {
         <div className="flex flex-col">
           <span className="font-medium">{row.original.site.name}</span>
           <span className="font-mono text-xs text-muted-foreground">
-            {row.original.site.siteId} · {row.original.stackId}
+            {row.original.site.siteId}
           </span>
         </div>
+      ),
+    },
+    {
+      accessorKey: "stackId",
+      header: "Stack",
+      cell: ({ row }) => (
+        <span className="font-mono text-xs">{row.original.stackId}</span>
       ),
     },
     {
@@ -74,12 +80,28 @@ export function getAirEmissionColumns(handlers: {
       ),
       cell: ({ row }) => (
         <span className="tabular-nums">
-          {row.original.concentration.toLocaleString()}{" "}
-          <span className="text-xs text-muted-foreground">
-            {row.original.concentrationUnit}
-          </span>
+          {row.original.concentration.toLocaleString()}
         </span>
       ),
+    },
+    {
+      accessorKey: "concentrationUnit",
+      header: "Unit",
+      cell: ({ row }) => (
+        <span className="text-muted-foreground">
+          {row.original.concentrationUnit}
+        </span>
+      ),
+    },
+    {
+      accessorKey: "flowRate",
+      header: "Flow rate",
+      cell: ({ row }) => num(row.original.flowRate),
+    },
+    {
+      accessorKey: "totalEmissions",
+      header: "Total emissions",
+      cell: ({ row }) => num(row.original.totalEmissions),
     },
     {
       accessorKey: "measurementMethod",
@@ -91,36 +113,20 @@ export function getAirEmissionColumns(handlers: {
       ),
     },
     {
-      accessorKey: "status",
-      header: "Status",
-      cell: ({ row }) => {
-        const status = row.original.status;
-        return (
-          <Badge
-            variant={isRecordStatus(status) ? STATUS_BADGE_VARIANT[status] : "secondary"}
-          >
-            {isRecordStatus(status) ? STATUS_LABEL[status] : status}
-          </Badge>
-        );
-      },
+      accessorKey: "equipmentReference",
+      header: "Equipment ref",
+      cell: ({ row }) => (
+        <span className="font-mono text-xs text-muted-foreground">
+          {row.original.equipmentReference ?? "—"}
+        </span>
+      ),
     },
     {
       id: "actions",
       header: "",
       cell: ({ row }) => {
         const record = row.original;
-        const editable =
-          handlers.canEdit &&
-          isRecordStatus(record.status) &&
-          EDITABLE_STATUSES.has(record.status);
-
-        if (!editable) {
-          return (
-            <div className="flex justify-end pr-2 text-muted-foreground">
-              <Lock className="size-3.5" aria-label="Locked" />
-            </div>
-          );
-        }
+        if (!handlers.canEdit) return null;
 
         return (
           <div className="flex justify-end">

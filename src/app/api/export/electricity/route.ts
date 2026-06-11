@@ -17,7 +17,7 @@ export async function GET(req: NextRequest) {
 
   const sp = req.nextUrl.searchParams;
   const isCsv = sp.get("format") === "csv";
-  const filters = parseElectricityFilters((k) => sp.get(k) ?? undefined);
+  const filters = parseElectricityFilters((k) => sp.getAll(k));
   const records = await listElectricity(result.user, filters);
 
   const rows = records.map((r) => ({
@@ -25,15 +25,10 @@ export async function GET(req: NextRequest) {
     Site: r.site.name,
     "Meter ID": r.meterId,
     "Consumption (kWh)": r.consumptionKwh,
-    "Peak (kWh)": r.peakKwh ?? null,
-    "Off-Peak (kWh)": r.offPeakKwh ?? null,
     "Renewable %": r.renewablePercent ?? null,
     Supplier: r.supplier ?? null,
     "Period Start": format(r.periodStart, "yyyy-MM-dd"),
     "Period End": format(r.periodEnd, "yyyy-MM-dd"),
-    Status: r.status,
-    "Submitted By": r.submittedBy.name,
-    "Approved By": r.approvedBy?.name ?? null,
   }));
 
   const date = format(new Date(), "yyyy-MM-dd");

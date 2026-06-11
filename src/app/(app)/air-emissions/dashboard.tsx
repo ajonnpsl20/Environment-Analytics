@@ -4,52 +4,45 @@ import { useMemo } from "react";
 import { format } from "date-fns";
 
 import { ChartCard } from "@/components/charts/chart-card";
-import { LineChart, type LineSeries } from "@/components/charts/line-chart";
+import { LineChart } from "@/components/charts/line-chart";
 import type { AirEmissionRow } from "./columns";
 
 type ChartData = Array<Record<string, string | number | null>>;
 
-// Bucket records by month, one averaged line per pollutant type.
-function buildPollutantTrend(records: AirEmissionRow[]): {
-  data: ChartData;
-  series: LineSeries[];
-} {
-  const byMonth = new Map<
-    string,
-    { label: string; sums: Map<string, { sum: number; count: number }> }
-  >();
-  const pollutants = new Set<string>();
+type PollutantChart = { pollutant: string; unit?: string; data: ChartData };
 
+// One chart per pollutant: a single line of the monthly AVERAGE concentration
+// across all (filtered) sites. Splitting by pollutant keeps each chart's Y-axis
+// in a single unit/scale instead of mixing CO2 with PM2.5 on one axis.
+function buildByPollutant(records: AirEmissionRow[]): PollutantChart[] {
+  const byPollutant = new Map<string, AirEmissionRow[]>();
   for (const r of records) {
-    const key = format(r.measuredAt, "yyyy-MM");
-    pollutants.add(r.pollutantType);
-
-    let bucket = byMonth.get(key);
-    if (!bucket) {
-      bucket = { label: format(r.measuredAt, "MMM yyyy"), sums: new Map() };
-      byMonth.set(key, bucket);
-    }
-    const agg = bucket.sums.get(r.pollutantType) ?? { sum: 0, count: 0 };
-    agg.sum += r.concentration;
-    agg.count += 1;
-    bucket.sums.set(r.pollutantType, agg);
+    const arr = byPollutant.get(r.pollutantType) ?? [];
+    arr.push(r);
+    byPollutant.set(r.pollutantType, arr);
   }
 
-  const series: LineSeries[] = [...pollutants]
-    .sort()
-    .map((p) => ({ key: p, label: p }));
-
-  const data: ChartData = [...byMonth.keys()].sort().map((key) => {
-    const bucket = byMonth.get(key)!;
-    const row: Record<string, string | number | null> = { month: bucket.label };
-    for (const s of series) {
-      const agg = bucket.sums.get(s.key);
-      row[s.key] = agg ? Math.round((agg.sum / agg.count) * 100) / 100 : null;
+  return [...byPollutant.keys()].sort().map((pollutant) => {
+    const rows = byPollutant.get(pollutant)!;
+    const byMonth = new Map<string, { label: string; sum: number; count: number }>();
+    for (const r of rows) {
+      const key = format(r.measuredAt, "yyyy-MM");
+      let b = byMonth.get(key);
+      if (!b) {
+        b = { label: format(r.measuredAt, "MMM yyyy"), sum: 0, count: 0 };
+        byMonth.set(key, b);
+      }
+      b.sum += r.concentration;
+      b.count += 1;
     }
-    return row;
+    const data: ChartData = [...byMonth.keys()].sort().map((k) => {
+      const b = byMonth.get(k)!;
+      return { month: b.label, value: Math.round((b.sum / b.count) * 100) / 100 };
+    });
+    const units = new Set(rows.map((r) => r.concentrationUnit));
+    const unit = units.size === 1 ? [...units][0] : undefined;
+    return { pollutant, unit, data };
   });
-
-  return { data, series };
 }
 
 export function AirEmissionDashboard({
@@ -57,38 +50,31 @@ export function AirEmissionDashboard({
 }: {
   records: AirEmissionRow[];
 }) {
-  const trend = useMemo(() => buildPollutantTrend(records), [records]);
+  const charts = useMemo(() => buildByPollutant(records), [records]);
 
-  // Only show a Y-axis unit when the filtered set is single-unit — otherwise the
-  // axis would be misleading (the card already advises filtering by pollutant).
-  const unit = useMemo(() => {
-    const units = new Set(records.map((r) => r.concentrationUnit));
-    return units.size === 1 ? [...units][0] : undefined;
-  }, [records]);
-
-  // Rendered as an array so adding charts is a config change (CLAUDE.md).
-  const charts = [
-    {
-      key: "pollutant-trend",
-      title: "Pollutant concentration over time",
-      description:
-        "Monthly average concentration, one line per pollutant. Filter by pollutant to compare like-for-like units.",
-      node: (
-        <LineChart
-          data={trend.data}
-          series={trend.series}
-          xKey="month"
-          unit={unit}
-        />
-      ),
-    },
-  ];
+  if (charts.length === 0) {
+    return (
+      <div className="flex h-64 items-center justify-center rounded-lg border bg-card text-sm text-muted-foreground">
+        No data for the selected filters.
+      </div>
+    );
+  }
 
   return (
-    <div className="grid gap-4">
+    <div className="grid gap-4 lg:grid-cols-2">
       {charts.map((c) => (
-        <ChartCard key={c.key} title={c.title} description={c.description}>
-          {c.node}
+        <ChartCard
+          key={c.pollutant}
+          title={`${c.pollutant} concentration over time`}
+          description="Monthly average across the filtered sites."
+        >
+          <LineChart
+            data={c.data}
+            series={[{ key: "value", label: c.pollutant }]}
+            xKey="month"
+            unit={c.unit}
+            height={260}
+          />
         </ChartCard>
       ))}
     </div>

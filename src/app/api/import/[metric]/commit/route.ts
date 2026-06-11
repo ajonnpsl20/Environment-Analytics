@@ -8,8 +8,8 @@ import type { RawRow } from "@/lib/import/types";
 type Context = { params: Promise<{ metric: string }> };
 
 // POST /api/import/[metric]/commit — body { rows: RawRow[] }.
-// Re-validates from scratch (never trusts the client), creates SUBMITTED records,
-// and audit-logs each as IMPORTED attributed to the uploader.
+// Re-validates from scratch (never trusts the client), creates the records, and
+// audit-logs each as IMPORTED attributed to the uploader.
 export async function POST(req: NextRequest, { params }: Context) {
   const result = await requireApiUser("import_data");
   if ("response" in result) return result.response;
@@ -37,7 +37,6 @@ export async function POST(req: NextRequest, { params }: Context) {
   }
 
   const commit = await commitRows(descriptor, rows as RawRow[], user, {
-    submittedById: user.id,
     auditUserId: user.id,
     notes: "Bulk file import",
   });

@@ -67,14 +67,13 @@ export async function validateRows(
 
 /**
  * Re-validate raw rows from scratch (never trust the client), create the records,
- * and audit each one. `submittedById` is the record's author (the system user for
- * the connector); `auditUserId` + `notes` record who/why in the audit trail.
+ * and audit each one. `auditUserId` + `notes` record who/why in the audit trail.
  */
 export async function commitRows(
   descriptor: MetricDescriptor<unknown>,
   rawRows: RawRow[],
   actingUser: Actor,
-  opts: { submittedById: string; auditUserId: string; notes?: string | null },
+  opts: { auditUserId: string; notes?: string | null },
 ): Promise<CommitResult> {
   const siteIdByCode = await buildSiteIndex();
   const access = await buildAccess(actingUser);
@@ -97,7 +96,7 @@ export async function commitRows(
       continue;
     }
 
-    const record = await descriptor.create(result.data, opts.submittedById);
+    const record = await descriptor.create(result.data);
     await logAction({
       entityType: descriptor.auditEntityType,
       entityId: record.id,

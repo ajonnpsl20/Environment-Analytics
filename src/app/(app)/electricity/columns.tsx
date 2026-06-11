@@ -3,7 +3,7 @@
 import type { Prisma } from "@prisma/client";
 import type { ColumnDef } from "@tanstack/react-table";
 import { format } from "date-fns";
-import { MoreHorizontal, Pencil, Lock, Leaf } from "lucide-react";
+import { MoreHorizontal, Pencil, Leaf } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -14,19 +14,11 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { SortableHeader } from "@/components/tables/data-table";
-import {
-  STATUS_BADGE_VARIANT,
-  STATUS_LABEL,
-  EDITABLE_STATUSES,
-  isRecordStatus,
-} from "@/lib/record-status";
 
 // Mirrors the include in `listElectricity` (client-safe via type-only import).
 export type ElectricityRow = Prisma.ElectricityRecordGetPayload<{
   include: {
     site: { select: { name: true; siteId: true } };
-    submittedBy: { select: { name: true } };
-    approvedBy: { select: { name: true } };
   };
 }>;
 
@@ -106,36 +98,11 @@ export function getElectricityColumns(handlers: {
       ),
     },
     {
-      accessorKey: "status",
-      header: "Status",
-      cell: ({ row }) => {
-        const status = row.original.status;
-        return (
-          <Badge
-            variant={isRecordStatus(status) ? STATUS_BADGE_VARIANT[status] : "secondary"}
-          >
-            {isRecordStatus(status) ? STATUS_LABEL[status] : status}
-          </Badge>
-        );
-      },
-    },
-    {
       id: "actions",
       header: "",
       cell: ({ row }) => {
         const record = row.original;
-        const editable =
-          handlers.canEdit &&
-          isRecordStatus(record.status) &&
-          EDITABLE_STATUSES.has(record.status);
-
-        if (!editable) {
-          return (
-            <div className="flex justify-end pr-2 text-muted-foreground">
-              <Lock className="size-3.5" aria-label="Locked" />
-            </div>
-          );
-        }
+        if (!handlers.canEdit) return null;
 
         return (
           <div className="flex justify-end">

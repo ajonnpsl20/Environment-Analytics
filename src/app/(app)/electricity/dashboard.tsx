@@ -4,18 +4,39 @@ import { useMemo } from "react";
 import { format } from "date-fns";
 
 import { ChartCard } from "@/components/charts/chart-card";
-import { BarChart, type BarSeries } from "@/components/charts/bar-chart";
-import { LineChart, type LineSeries } from "@/components/charts/line-chart";
+import {
+  BarChart,
+  type BarSeries,
+  type LegendItem,
+} from "@/components/charts/bar-chart";
 import type { ElectricityRow } from "./columns";
 
 type ChartData = Array<Record<string, string | number | null>>;
 
-// Total consumption per month, stacked by site.
-function buildConsumptionBySite(records: ElectricityRow[]): {
+// Dense (sites × 2 energy types per month) — default to the most recent N months.
+const DEFAULT_MONTHS = 12;
+
+const SITE_COLORS = [
+  "var(--color-chart-1)",
+  "var(--color-chart-2)",
+  "var(--color-chart-3)",
+  "var(--color-chart-4)",
+  "var(--color-chart-5)",
+];
+
+// One bar per site per month, each bar stacked into renewable (solid) and
+// non-renewable (faded) kWh. Same site ⇒ same stackId (stacked); different sites
+// ⇒ different stackId (grouped side-by-side). Renewable kWh = Σ kWh × renew%/100
+// (a missing renewable % counts as 0% renewable).
+function buildEnergyMix(records: ElectricityRow[]): {
   data: ChartData;
   series: BarSeries[];
+  legendItems: LegendItem[];
 } {
-  const byMonth = new Map<string, { label: string; sums: Map<string, number> }>();
+  const byMonth = new Map<
+    string,
+    { label: string; ren: Map<string, number>; non: Map<string, number> }
+  >();
   const sites = new Map<string, string>();
 
   for (const r of records) {
@@ -24,60 +45,57 @@ function buildConsumptionBySite(records: ElectricityRow[]): {
 
     let bucket = byMonth.get(key);
     if (!bucket) {
-      bucket = { label: format(r.periodStart, "MMM yyyy"), sums: new Map() };
+      bucket = {
+        label: format(r.periodStart, "MMM yyyy"),
+        ren: new Map(),
+        non: new Map(),
+      };
       byMonth.set(key, bucket);
     }
-    bucket.sums.set(
-      r.site.siteId,
-      (bucket.sums.get(r.site.siteId) ?? 0) + r.consumptionKwh,
-    );
+    const code = r.site.siteId;
+    const renKwh = (r.consumptionKwh * (r.renewablePercent ?? 0)) / 100;
+    bucket.ren.set(code, (bucket.ren.get(code) ?? 0) + renKwh);
+    bucket.non.set(code, (bucket.non.get(code) ?? 0) + (r.consumptionKwh - renKwh));
   }
 
-  const series: BarSeries[] = [...sites.keys()].sort().map((code) => ({
-    key: code,
-    label: sites.get(code)!,
-  }));
+  const recentMonths = [...byMonth.keys()].sort().slice(-DEFAULT_MONTHS);
+  const siteCodes = [...sites.keys()].sort();
+  const colorFor = (i: number) => SITE_COLORS[i % SITE_COLORS.length];
 
-  const data: ChartData = [...byMonth.keys()].sort().map((key) => {
-    const bucket = byMonth.get(key)!;
+  const series: BarSeries[] = [];
+  siteCodes.forEach((code, i) => {
+    series.push({
+      key: `${code}__re`,
+      label: sites.get(code)!,
+      color: colorFor(i),
+      stackId: code,
+      opacity: 1,
+    });
+    series.push({
+      key: `${code}__non`,
+      label: `${sites.get(code)} (non-renewable)`,
+      color: colorFor(i),
+      stackId: code,
+      opacity: 0.4,
+    });
+  });
+
+  const data: ChartData = recentMonths.map((mkey) => {
+    const bucket = byMonth.get(mkey)!;
     const row: Record<string, string | number | null> = { month: bucket.label };
-    for (const s of series) {
-      row[s.key] = Math.round((bucket.sums.get(s.key) ?? 0) * 100) / 100;
-    }
+    siteCodes.forEach((code) => {
+      row[`${code}__re`] = Math.round(bucket.ren.get(code) ?? 0);
+      row[`${code}__non`] = Math.round(bucket.non.get(code) ?? 0);
+    });
     return row;
   });
 
-  return { data, series };
-}
+  const legendItems: LegendItem[] = siteCodes.map((code, i) => ({
+    label: sites.get(code)!,
+    color: colorFor(i),
+  }));
 
-// Average renewable % per month (across all records that report it).
-function buildRenewableTrend(records: ElectricityRow[]): {
-  data: ChartData;
-  series: LineSeries[];
-} {
-  const byMonth = new Map<string, { label: string; total: number; count: number }>();
-
-  for (const r of records) {
-    if (r.renewablePercent == null) continue;
-    const key = format(r.periodStart, "yyyy-MM");
-    let bucket = byMonth.get(key);
-    if (!bucket) {
-      bucket = { label: format(r.periodStart, "MMM yyyy"), total: 0, count: 0 };
-      byMonth.set(key, bucket);
-    }
-    bucket.total += r.renewablePercent;
-    bucket.count += 1;
-  }
-
-  const data: ChartData = [...byMonth.keys()].sort().map((key) => {
-    const bucket = byMonth.get(key)!;
-    return {
-      month: bucket.label,
-      renewable: Math.round((bucket.total / bucket.count) * 10) / 10,
-    };
-  });
-
-  return { data, series: [{ key: "renewable", label: "Avg renewable %" }] };
+  return { data, series, legendItems };
 }
 
 export function ElectricityDashboard({
@@ -85,51 +103,23 @@ export function ElectricityDashboard({
 }: {
   records: ElectricityRow[];
 }) {
-  const consumption = useMemo(
-    () => buildConsumptionBySite(records),
-    [records],
-  );
-  const renewable = useMemo(() => buildRenewableTrend(records), [records]);
-
-  const charts = [
-    {
-      key: "consumption-by-site",
-      title: "Electricity consumption over time",
-      description:
-        "Total consumption per month (kWh), stacked by site. Filter to narrow by site or supplier.",
-      node: (
-        <BarChart
-          data={consumption.data}
-          series={consumption.series}
-          xKey="month"
-          stacked
-          unit="kWh"
-        />
-      ),
-    },
-    {
-      key: "renewable-trend",
-      title: "Renewable share over time",
-      description:
-        "Average renewable energy percentage per month across the filtered records.",
-      node: (
-        <LineChart
-          data={renewable.data}
-          series={renewable.series}
-          xKey="month"
-          unit="%"
-        />
-      ),
-    },
-  ];
+  const chart = useMemo(() => buildEnergyMix(records), [records]);
 
   return (
     <div className="grid gap-4">
-      {charts.map((c) => (
-        <ChartCard key={c.key} title={c.title} description={c.description}>
-          {c.node}
-        </ChartCard>
-      ))}
+      <ChartCard
+        title="Renewable vs non-renewable consumption by site"
+        description="Most recent 12 months (kWh). One bar per site each month; solid = renewable, faded = non-renewable. Use the date filter to widen the range."
+      >
+        <BarChart
+          data={chart.data}
+          series={chart.series}
+          xKey="month"
+          unit="kWh"
+          legendItems={chart.legendItems}
+          height={340}
+        />
+      </ChartCard>
     </div>
   );
 }

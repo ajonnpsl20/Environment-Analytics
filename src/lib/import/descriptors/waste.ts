@@ -14,11 +14,12 @@ import {
 const columns: ColumnSpec[] = [
   { header: "Site ID", field: "siteId", example: "MAN-001", siteRef: true, required: true },
   { header: "Waste Type", field: "wasteType", example: "HAZARDOUS", required: true },
+  { header: "EWC Code", field: "ewcCode", example: "13 02 05*", required: true },
   { header: "Stream", field: "streamCategory", example: "Waste Oils", required: true },
   { header: "Weight (kg)", field: "weightKg", example: "1240", required: true },
   { header: "Disposal Method", field: "disposalMethod", example: "Treatment", required: true },
   { header: "Contractor", field: "contractor", example: "Veolia", required: true },
-  { header: "WTN Reference", field: "wtnReference", example: "WTN-2026-5001" },
+  { header: "WTN Reference", field: "wtnReference", example: "WTN-2026-5001", required: true },
   { header: "Transfer Date", field: "transferDate", example: "2026-05-15", required: true },
 ];
 
@@ -71,14 +72,12 @@ function normalize(
   return { ok: true, data: parsed.data, siteId: parsed.data.siteId };
 }
 
-async function create(
-  input: WasteInput,
-  submittedById: string,
-): Promise<{ id: string }> {
+async function create(input: WasteInput): Promise<{ id: string }> {
   return db.wasteRecord.create({
     data: {
       siteId: input.siteId,
       wasteType: input.wasteType,
+      ewcCode: input.ewcCode,
       streamCategory: input.streamCategory,
       weightKg: input.weightKg,
       disposalMethod: input.disposalMethod,
@@ -86,8 +85,6 @@ async function create(
       wtnReference: input.wtnReference,
       transferDate: input.transferDate,
       wtnDocumentR2Key: input.wtnDocumentR2Key ?? null,
-      status: "SUBMITTED",
-      submittedById,
     },
     select: { id: true },
   });

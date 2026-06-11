@@ -88,7 +88,7 @@ export function ImportDialog({
         return;
       }
       toast.success(
-        `Imported ${data.created} record${data.created === 1 ? "" : "s"} — pending review`,
+        `Imported ${data.created} record${data.created === 1 ? "" : "s"}`,
       );
       if (data.skipped > 0) {
         toast.warning(`${data.skipped} row(s) were skipped during import.`);
@@ -195,7 +195,7 @@ export function ImportDialog({
             </AlertTitle>
             <AlertDescription>
               {preview.summary.valid > 0
-                ? `${preview.summary.valid} ${label} row(s) will be submitted for review.`
+                ? `${preview.summary.valid} ${label} row(s) will be imported.`
                 : "No valid rows to import — fix the errors and re-upload."}
             </AlertDescription>
           </Alert>

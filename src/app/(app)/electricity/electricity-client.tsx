@@ -33,8 +33,6 @@ function toFormValues(r: ElectricityRow): ElectricityFormValues {
     siteId: r.siteId,
     meterId: r.meterId,
     consumptionKwh: String(r.consumptionKwh),
-    peakKwh: r.peakKwh != null ? String(r.peakKwh) : "",
-    offPeakKwh: r.offPeakKwh != null ? String(r.offPeakKwh) : "",
     renewablePercent: r.renewablePercent != null ? String(r.renewablePercent) : "",
     supplier: r.supplier ?? "",
     periodStart: toYyyyMmDd(r.periodStart),

@@ -10,29 +10,32 @@ import type { WasteRow } from "./columns";
 
 type ChartData = Array<Record<string, string | number | null>>;
 
-// Total weight per month, stacked by waste type.
-function buildWeightByType(records: WasteRow[]): {
+// Monthly total weight (kg) for one waste type, one grouped bar per site.
+function buildWeightBySite(records: WasteRow[]): {
   data: ChartData;
   series: BarSeries[];
 } {
   const byMonth = new Map<string, { label: string; sums: Map<string, number> }>();
-  const types = new Set<string>();
+  const sites = new Map<string, string>();
 
   for (const r of records) {
     const key = format(r.transferDate, "yyyy-MM");
-    types.add(r.wasteType);
+    sites.set(r.site.siteId, r.site.name);
 
     let bucket = byMonth.get(key);
     if (!bucket) {
       bucket = { label: format(r.transferDate, "MMM yyyy"), sums: new Map() };
       byMonth.set(key, bucket);
     }
-    bucket.sums.set(r.wasteType, (bucket.sums.get(r.wasteType) ?? 0) + r.weightKg);
+    bucket.sums.set(
+      r.site.siteId,
+      (bucket.sums.get(r.site.siteId) ?? 0) + r.weightKg,
+    );
   }
 
-  const series: BarSeries[] = [...types].sort().map((t) => ({
-    key: t,
-    label: WASTE_TYPE_LABEL[t as WasteTypeName] ?? t,
+  const series: BarSeries[] = [...sites.keys()].sort().map((code) => ({
+    key: code,
+    label: sites.get(code)!,
   }));
 
   const data: ChartData = [...byMonth.keys()].sort().map((key) => {
@@ -47,32 +50,34 @@ function buildWeightByType(records: WasteRow[]): {
   return { data, series };
 }
 
-export function WasteDashboard({ records }: { records: WasteRow[] }) {
-  const trend = useMemo(() => buildWeightByType(records), [records]);
+// Hazardous + non-hazardous only (recyclable is excluded from the dashboard).
+const CHARTED_TYPES: WasteTypeName[] = ["HAZARDOUS", "NON_HAZARDOUS"];
 
-  const charts = [
-    {
-      key: "weight-by-type",
-      title: "Waste weight over time",
-      description:
-        "Total weight transferred per month (kg), stacked by waste type. Filter to narrow by site or type.",
-      node: (
-        <BarChart
-          data={trend.data}
-          series={trend.series}
-          xKey="month"
-          stacked
-          unit="kg"
-        />
-      ),
-    },
-  ];
+export function WasteDashboard({ records }: { records: WasteRow[] }) {
+  const charts = useMemo(
+    () =>
+      CHARTED_TYPES.map((type) => ({
+        type,
+        ...buildWeightBySite(records.filter((r) => r.wasteType === type)),
+      })),
+    [records],
+  );
 
   return (
-    <div className="grid gap-4">
+    <div className="grid gap-4 lg:grid-cols-2">
       {charts.map((c) => (
-        <ChartCard key={c.key} title={c.title} description={c.description}>
-          {c.node}
+        <ChartCard
+          key={c.type}
+          title={`${WASTE_TYPE_LABEL[c.type]} waste over time`}
+          description="Total weight transferred per month (kg), one bar per site."
+        >
+          <BarChart
+            data={c.data}
+            series={c.series}
+            xKey="month"
+            unit="kg"
+            height={280}
+          />
         </ChartCard>
       ))}
     </div>

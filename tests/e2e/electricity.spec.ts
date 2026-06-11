@@ -8,10 +8,10 @@ async function loginAsAdmin(page: import("@playwright/test").Page) {
   await page.getByLabel("Email").fill("admin@envirohub.demo");
   await page.getByLabel("Password").fill(process.env.SEED_DEMO_PASSWORD ?? "");
   await page.getByRole("button", { name: "Sign in" }).click();
-  await expect(page).toHaveURL(/\/dashboard/, { timeout: 20_000 });
+  await expect(page).toHaveURL(/\/air-emissions/, { timeout: 20_000 });
 }
 
-test("electricity: data table and both dashboard charts render seeded data", async ({
+test("electricity: data table and dashboard chart render seeded data", async ({
   page,
 }) => {
   await loginAsAdmin(page);
@@ -21,16 +21,15 @@ test("electricity: data table and both dashboard charts render seeded data", asy
     page.getByRole("heading", { name: "Electricity", level: 2 }),
   ).toBeVisible({ timeout: 20_000 });
 
-  // Seeded approved electricity records render (filter so it's deterministic).
-  await page.goto("/electricity?status=APPROVED");
-  await expect(page.getByText("Approved").first()).toBeVisible();
+  // Seeded electricity records render — filter by supplier for determinism.
+  await page.goto("/electricity?supplier=Octopus+Energy");
+  await expect(page.getByText("Octopus Energy").first()).toBeVisible();
 
   await page.getByRole("tab", { name: "Dashboard" }).click();
-  // Both the kWh bar chart and the renewable-% line chart.
+  // The single grouped-and-stacked renewable/non-renewable chart.
   await expect(
-    page.getByText("Electricity consumption over time"),
+    page.getByText("Renewable vs non-renewable consumption by site"),
   ).toBeVisible();
-  await expect(page.getByText("Renewable share over time")).toBeVisible();
 });
 
 test("electricity: new-record form opens", async ({ page }) => {
@@ -64,16 +63,10 @@ test("electricity: import template endpoint returns a spreadsheet", async ({
   expect(res.headers()["content-type"]).toContain("spreadsheetml");
 });
 
-test("electricity: approvals queue has an Electricity tab; connector syncs all 4 metrics", async ({
-  page,
-}) => {
+test("electricity: connector syncs all 4 metrics", async ({ page }) => {
   await loginAsAdmin(page);
 
-  await page.goto("/approvals");
-  await page.getByRole("tab", { name: /Electricity/ }).click();
-  await expect(page.getByRole("button", { name: "Approve" }).first()).toBeVisible();
-
-  // All four metrics are now registered → four Sync buttons on the connector.
+  // All four metrics are registered → four Sync buttons on the connector.
   await page.goto("/connectors");
   const syncButtons = page.getByRole("button", { name: "Sync now" });
   await expect(syncButtons).toHaveCount(4);

@@ -13,12 +13,12 @@ export async function GET(req: NextRequest) {
   if ("response" in result) return result.response;
 
   const sp = req.nextUrl.searchParams;
-  const filters = parseWaterFilters((k) => sp.get(k) ?? undefined);
+  const filters = parseWaterFilters((k) => sp.getAll(k));
   const records = await listWater(result.user, filters);
   return NextResponse.json({ records });
 }
 
-// POST /api/water — create a record (enters the workflow as SUBMITTED).
+// POST /api/water — create a record.
 export async function POST(req: NextRequest) {
   const result = await requireApiUser("enter_data");
   if ("response" in result) return result.response;
@@ -52,15 +52,13 @@ export async function POST(req: NextRequest) {
       source: data.source,
       periodStart: data.periodStart,
       periodEnd: data.periodEnd,
-      status: "SUBMITTED",
-      submittedById: user.id,
     },
   });
 
   await logAction({
     entityType: "WaterUsageRecord",
     entityId: record.id,
-    action: "SUBMITTED",
+    action: "CREATED",
     userId: user.id,
     after: record,
   });

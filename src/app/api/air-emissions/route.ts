@@ -16,12 +16,12 @@ export async function GET(req: NextRequest) {
   if ("response" in result) return result.response;
 
   const sp = req.nextUrl.searchParams;
-  const filters = parseAirEmissionFilters((k) => sp.get(k) ?? undefined);
+  const filters = parseAirEmissionFilters((k) => sp.getAll(k));
   const records = await listAirEmissions(result.user, filters);
   return NextResponse.json({ records });
 }
 
-// POST /api/air-emissions — create a record (enters the workflow as SUBMITTED).
+// POST /api/air-emissions — create a record.
 export async function POST(req: NextRequest) {
   const result = await requireApiUser("enter_data");
   if ("response" in result) return result.response;
@@ -57,15 +57,13 @@ export async function POST(req: NextRequest) {
       totalEmissions: data.totalEmissions ?? null,
       measurementMethod: data.measurementMethod,
       equipmentReference: data.equipmentReference ?? null,
-      status: "SUBMITTED",
-      submittedById: user.id,
     },
   });
 
   await logAction({
     entityType: "AirEmissionRecord",
     entityId: record.id,
-    action: "SUBMITTED",
+    action: "CREATED",
     userId: user.id,
     after: record,
   });

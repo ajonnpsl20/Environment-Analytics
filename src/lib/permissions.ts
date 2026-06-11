@@ -10,21 +10,18 @@ export type Action =
   | "manage_sites"
   | "view_all_sites"
   | "enter_data"
-  | "approve_records"
   | "import_data"
   | "export_data"
   | "run_connector"
   | "view_audit_log";
 
-// Mirrors the permissions matrix in CLAUDE.md. Includes Phase 2+ actions
-// (enter_data, approve_records, import/export, run_connector) so later phases reuse this.
+// Mirrors the permissions matrix in CLAUDE.md.
 export const ROLE_ACTIONS: Record<Role, ReadonlySet<Action>> = {
   SystemAdmin: new Set<Action>([
     "manage_users",
     "manage_sites",
     "view_all_sites",
     "enter_data",
-    "approve_records",
     "import_data",
     "export_data",
     "run_connector",
@@ -33,7 +30,6 @@ export const ROLE_ACTIONS: Record<Role, ReadonlySet<Action>> = {
   SiteAdmin: new Set<Action>([
     "view_all_sites",
     "enter_data",
-    "approve_records",
     "import_data",
     "export_data",
     "run_connector",

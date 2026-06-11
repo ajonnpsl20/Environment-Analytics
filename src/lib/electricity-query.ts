@@ -3,25 +3,23 @@ import type { Prisma, Role } from "@prisma/client";
 
 import { db } from "@/lib/db";
 import { buildSiteScopeWhere } from "@/lib/site-scope";
-import { isRecordStatus } from "@/lib/record-status";
+import { scopedSiteIn } from "@/lib/filter-scope";
 
 export type ElectricityFilters = {
   from?: string;
   to?: string;
-  siteId?: string;
-  supplier?: string;
-  status?: string;
+  siteId?: string[];
+  supplier?: string[];
 };
 
 export function parseElectricityFilters(
-  get: (key: string) => string | undefined,
+  getAll: (key: string) => string[],
 ): ElectricityFilters {
   return {
-    from: get("from"),
-    to: get("to"),
-    siteId: get("site"),
-    supplier: get("supplier"),
-    status: get("status"),
+    from: getAll("from")[0],
+    to: getAll("to")[0],
+    siteId: getAll("site"),
+    supplier: getAll("supplier"),
   };
 }
 
@@ -32,11 +30,9 @@ export async function buildElectricityWhere(
   const scope = await buildSiteScopeWhere(user);
 
   const where: Prisma.ElectricityRecordWhereInput = { ...scope };
-  if (filters.siteId) where.siteId = filters.siteId;
-  if (filters.supplier) where.supplier = filters.supplier;
-  if (filters.status && isRecordStatus(filters.status)) {
-    where.status = filters.status;
-  }
+  const siteIn = scopedSiteIn(filters.siteId, scope);
+  if (siteIn) where.siteId = siteIn;
+  if (filters.supplier?.length) where.supplier = { in: filters.supplier };
   if (filters.from || filters.to) {
     where.periodStart = {
       ...(filters.from ? { gte: new Date(filters.from) } : {}),
@@ -44,18 +40,11 @@ export async function buildElectricityWhere(
     };
   }
 
-  // A non-SystemAdmin with an explicit site filter must stay within scope.
-  if (filters.siteId && scope.siteId && !scope.siteId.in.includes(filters.siteId)) {
-    where.siteId = { in: [] };
-  }
-
   return where;
 }
 
 const listInclude = {
   site: { select: { name: true, siteId: true } },
-  submittedBy: { select: { name: true } },
-  approvedBy: { select: { name: true } },
 } satisfies Prisma.ElectricityRecordInclude;
 
 export type ElectricityRow = Prisma.ElectricityRecordGetPayload<{

@@ -71,10 +71,7 @@ function normalize(
   return { ok: true, data: parsed.data, siteId: parsed.data.siteId };
 }
 
-async function create(
-  input: WaterInput,
-  submittedById: string,
-): Promise<{ id: string }> {
+async function create(input: WaterInput): Promise<{ id: string }> {
   return db.waterUsageRecord.create({
     data: {
       siteId: input.siteId,
@@ -85,8 +82,6 @@ async function create(
       source: input.source,
       periodStart: input.periodStart,
       periodEnd: input.periodEnd,
-      status: "SUBMITTED",
-      submittedById,
     },
     select: { id: true },
   });

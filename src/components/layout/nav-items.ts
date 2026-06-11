@@ -1,11 +1,9 @@
 import {
-  LayoutDashboard,
   Building2,
   Wind,
   Trash2,
   Droplets,
   Zap,
-  ClipboardCheck,
   Plug,
   ScrollText,
   type LucideIcon,
@@ -23,15 +21,13 @@ export type NavItem = {
 };
 
 export const NAV_ITEMS: NavItem[] = [
-  { title: "Dashboard", href: "/dashboard", icon: LayoutDashboard, available: true },
   { title: "Sites", href: "/sites", icon: Building2, action: "manage_sites", available: true },
   { title: "Air Emissions", href: "/air-emissions", icon: Wind, action: "enter_data", available: true },
   { title: "Waste", href: "/waste", icon: Trash2, action: "enter_data", available: true },
   { title: "Water", href: "/water", icon: Droplets, action: "enter_data", available: true },
   { title: "Electricity", href: "/electricity", icon: Zap, action: "enter_data", available: true },
-  { title: "Approvals", href: "/approvals", icon: ClipboardCheck, action: "approve_records", available: true },
   { title: "Connectors", href: "/connectors", icon: Plug, action: "run_connector", available: true },
-  { title: "Audit Log", href: "/audit-log", icon: ScrollText, action: "view_audit_log", available: true },
+  { title: "Data Entry Log", href: "/audit-log", icon: ScrollText, action: "view_audit_log", available: true },
 ];
 
 /** Human-readable page title for a pathname (used by the header). */

@@ -28,6 +28,7 @@ function toFormValues(r: WasteRow): WasteFormValues {
   return {
     siteId: r.siteId,
     wasteType: r.wasteType as WasteTypeName,
+    ewcCode: r.ewcCode,
     streamCategory: r.streamCategory,
     weightKg: String(r.weightKg),
     disposalMethod: r.disposalMethod,

@@ -14,7 +14,7 @@ export async function GET(req: NextRequest) {
 
   const sp = req.nextUrl.searchParams;
   const isCsv = sp.get("format") === "csv";
-  const filters = parseWaterFilters((k) => sp.get(k) ?? undefined);
+  const filters = parseWaterFilters((k) => sp.getAll(k));
   const records = await listWater(result.user, filters);
 
   const rows = records.map((r) => ({
@@ -27,9 +27,6 @@ export async function GET(req: NextRequest) {
     Source: r.source,
     "Period Start": format(r.periodStart, "yyyy-MM-dd"),
     "Period End": format(r.periodEnd, "yyyy-MM-dd"),
-    Status: r.status,
-    "Submitted By": r.submittedBy.name,
-    "Approved By": r.approvedBy?.name ?? null,
   }));
 
   const date = format(new Date(), "yyyy-MM-dd");

@@ -14,7 +14,7 @@ import { Button } from "@/components/ui/button";
 import { auditColumns } from "./columns";
 import { AuditFilters } from "./audit-filters";
 
-export const metadata: Metadata = { title: "Audit Log" };
+export const metadata: Metadata = { title: "Data Entry Log" };
 export const dynamic = "force-dynamic";
 
 const PAGE_SIZE = 20;
@@ -32,21 +32,23 @@ export default async function AuditLogPage({
   }
 
   const sp = await searchParams;
-  const getStr = (k: string) =>
-    typeof sp[k] === "string" && sp[k] !== "" ? (sp[k] as string) : undefined;
+  const getAll = (k: string): string[] => {
+    const v = sp[k];
+    if (Array.isArray(v)) return v.filter((s) => s !== "");
+    return typeof v === "string" && v !== "" ? [v] : [];
+  };
 
-  const rawAction = getStr("action");
-  const action = rawAction && isAuditAction(rawAction) ? rawAction : undefined;
-  const entityType = getStr("entityType");
-  const userId = getStr("user");
-  const from = getStr("from");
-  const to = getStr("to");
-  const page = Math.max(1, Number(getStr("page") ?? "1") || 1);
+  const actions = getAll("action").filter(isAuditAction);
+  const entityTypes = getAll("entityType");
+  const userIds = getAll("user");
+  const from = getAll("from")[0];
+  const to = getAll("to")[0];
+  const page = Math.max(1, Number(getAll("page")[0] ?? "1") || 1);
 
   const filters: Prisma.AuditLogWhereInput = {};
-  if (action) filters.action = action;
-  if (entityType) filters.entityType = entityType;
-  if (userId) filters.userId = userId;
+  if (actions.length) filters.action = { in: actions };
+  if (entityTypes.length) filters.entityType = { in: entityTypes };
+  if (userIds.length) filters.userId = { in: userIds };
   if (from || to) {
     filters.timestamp = {
       ...(from ? { gte: new Date(from) } : {}),
@@ -76,9 +78,9 @@ export default async function AuditLogPage({
 
   function pageHref(target: number) {
     const next = new URLSearchParams();
-    if (action) next.set("action", action);
-    if (entityType) next.set("entityType", entityType);
-    if (userId) next.set("user", userId);
+    actions.forEach((a) => next.append("action", a));
+    entityTypes.forEach((e) => next.append("entityType", e));
+    userIds.forEach((u) => next.append("user", u));
     if (from) next.set("from", from);
     if (to) next.set("to", to);
     if (target > 1) next.set("page", String(target));
@@ -90,10 +92,10 @@ export default async function AuditLogPage({
     <div className="space-y-6">
       <div>
         <h2 className="font-heading text-2xl font-semibold tracking-tight">
-          Audit Log
+          Data Entry Log
         </h2>
         <p className="text-sm text-muted-foreground">
-          Every change to records and sites is recorded here.
+          Every record created, edited, imported, or deleted is recorded here.
         </p>
       </div>
 

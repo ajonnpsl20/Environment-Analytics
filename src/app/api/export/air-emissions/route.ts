@@ -16,7 +16,7 @@ export async function GET(req: NextRequest) {
 
   const sp = req.nextUrl.searchParams;
   const isCsv = sp.get("format") === "csv";
-  const filters = parseAirEmissionFilters((k) => sp.get(k) ?? undefined);
+  const filters = parseAirEmissionFilters((k) => sp.getAll(k));
   const records = await listAirEmissions(result.user, filters);
 
   const rows = records.map((r) => ({
@@ -31,9 +31,6 @@ export async function GET(req: NextRequest) {
     "Total Emissions": r.totalEmissions,
     "Measurement Method": r.measurementMethod,
     "Equipment Ref": r.equipmentReference,
-    Status: r.status,
-    "Submitted By": r.submittedBy.name,
-    "Approved By": r.approvedBy?.name ?? null,
   }));
 
   const date = format(new Date(), "yyyy-MM-dd");

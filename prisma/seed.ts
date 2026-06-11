@@ -1,7 +1,6 @@
 import {
   PrismaClient,
   Role,
-  RecordStatus,
   WasteType,
   WaterSource,
   MeasurementMethod,
@@ -40,15 +39,6 @@ const randomDate = (): Date =>
   new Date(RANGE_START + rand() * (RANGE_END - RANGE_START));
 const addDays = (d: Date, days: number): Date =>
   new Date(d.getTime() + days * 24 * 60 * 60 * 1000);
-
-// Weighted status: mostly approved, some submitted, a few returned/rejected.
-function pickStatus(): RecordStatus {
-  const r = rand();
-  if (r < 0.65) return RecordStatus.APPROVED;
-  if (r < 0.85) return RecordStatus.SUBMITTED;
-  if (r < 0.93) return RecordStatus.RETURNED;
-  return RecordStatus.REJECTED;
-}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Static reference data
@@ -121,17 +111,20 @@ const SITEADMIN2_SITES = new Set(["site-glasgow", "site-cardiff"]); // Site Admi
 // Data Entry User is assigned to Manchester + Birmingham only.
 const DATA_USER_SITES = new Set(["site-manchester", "site-birmingham"]);
 
-// Who submits a record at a given site — always a user assigned to that site, so
-// each role's scoped views (dashboards, approvals, audit) stay coherent.
+// Who entered a record at a given site — always a user assigned to that site, so
+// each role's scoped Data Entry Log stays coherent (the log scopes by actor).
 const submitterFor = (siteId: string): string => {
   if (DATA_USER_SITES.has(siteId)) return USER_DATA;
   if (SITEADMIN2_SITES.has(siteId)) return USER_SITEADMIN2;
   return USER_SITEADMIN; // London (+ any other England site)
 };
 
-// Who approves/returns/rejects a record at a given site (a Site Admin for it).
-const approverFor = (siteId: string): string =>
-  SITEADMIN2_SITES.has(siteId) ? USER_SITEADMIN2 : USER_SITEADMIN;
+// EWC (European Waste Catalogue) codes, by waste type, for realistic seed data.
+const EWC_BY_TYPE: Record<WasteType, readonly string[]> = {
+  HAZARDOUS: ["13 02 05*", "14 06 03*", "16 06 01*", "08 01 11*"],
+  NON_HAZARDOUS: ["20 03 01", "17 09 04", "19 12 12", "20 03 07"],
+  RECYCLABLE: ["20 01 01", "20 01 40", "15 01 01", "15 01 04"],
+};
 
 const POLLUTANTS: Record<string, [number, number]> = {
   CO2: [10000, 50000],
@@ -194,13 +187,6 @@ const SUPPLIERS = [
 // ─────────────────────────────────────────────────────────────────────────────
 // Generic builders
 // ─────────────────────────────────────────────────────────────────────────────
-type WorkflowFields = {
-  status: RecordStatus;
-  submittedById: string;
-  approvedById: string | null;
-  approvedAt: Date | null;
-};
-
 type AuditRow = {
   entityType: string;
   entityId: string;
@@ -212,61 +198,36 @@ type AuditRow = {
 
 const auditRows: AuditRow[] = [];
 
-// Build workflow fields + audit-log entries for a record.
-function workflow(
+// Record a data-entry audit entry for a seeded record. Most are CREATED; a
+// deterministic minority are IMPORTED (bulk upload) and some get a later EDITED
+// entry, so the Data Entry Log shows the full range of actions. The actor is a
+// user assigned to the record's site, keeping each Site Admin's scoped log real.
+function logEntry(
   entityType: string,
   entityId: string,
   siteId: string,
   createdAt: Date,
-): WorkflowFields {
-  const status = pickStatus();
-  const submittedById = submitterFor(siteId);
-
+): void {
+  const userId = submitterFor(siteId);
+  const imported = rand() < 0.18;
   auditRows.push({
     entityType,
     entityId,
-    action: AuditAction.SUBMITTED,
-    userId: submittedById,
+    action: imported ? AuditAction.IMPORTED : AuditAction.CREATED,
+    userId,
     timestamp: createdAt,
-    notes: null,
+    notes: imported ? "Imported from spreadsheet." : null,
   });
-
-  let approvedById: string | null = null;
-  let approvedAt: Date | null = null;
-  const reviewer = approverFor(siteId);
-
-  if (status === RecordStatus.APPROVED) {
-    approvedById = reviewer;
-    approvedAt = addDays(createdAt, randInt(1, 7));
+  if (rand() < 0.15) {
     auditRows.push({
       entityType,
       entityId,
-      action: AuditAction.APPROVED,
-      userId: reviewer,
-      timestamp: approvedAt,
+      action: AuditAction.EDITED,
+      userId,
+      timestamp: addDays(createdAt, randInt(1, 10)),
       notes: null,
     });
-  } else if (status === RecordStatus.RETURNED) {
-    auditRows.push({
-      entityType,
-      entityId,
-      action: AuditAction.RETURNED,
-      userId: reviewer,
-      timestamp: addDays(createdAt, randInt(1, 5)),
-      notes: "Please re-check the meter/equipment reference and resubmit.",
-    });
-  } else if (status === RecordStatus.REJECTED) {
-    auditRows.push({
-      entityType,
-      entityId,
-      action: AuditAction.REJECTED,
-      userId: reviewer,
-      timestamp: addDays(createdAt, randInt(1, 5)),
-      notes: "Duplicate of an existing record.",
-    });
   }
-
-  return { status, submittedById, approvedById, approvedAt };
 }
 
 async function main() {
@@ -351,7 +312,7 @@ async function main() {
     const pollutant = pick(Object.keys(POLLUTANTS));
     const [lo, hi] = POLLUTANTS[pollutant];
     const measuredAt = randomDate();
-    const wf = workflow("AirEmissionRecord", id, siteId, measuredAt);
+    logEntry("AirEmissionRecord", id, siteId, measuredAt);
     return {
       id,
       siteId,
@@ -364,7 +325,6 @@ async function main() {
       totalEmissions: round((lo + rand() * (hi - lo)) * randInt(10, 100)),
       measurementMethod: pick(MEASUREMENT_METHODS),
       equipmentReference: `CEMS-${randInt(100, 999)}`,
-      ...wf,
     };
   });
   await prisma.airEmissionRecord.createMany({ data: airRows });
@@ -374,11 +334,13 @@ async function main() {
     const id = `waste-${String(i).padStart(4, "0")}`;
     const siteId = pick(SITE_IDS);
     const transferDate = randomDate();
-    const wf = workflow("WasteRecord", id, siteId, transferDate);
+    const wasteType = pick(WASTE_TYPES);
+    logEntry("WasteRecord", id, siteId, transferDate);
     return {
       id,
       siteId,
-      wasteType: pick(WASTE_TYPES),
+      wasteType,
+      ewcCode: pick(EWC_BY_TYPE[wasteType]),
       streamCategory: pick(WASTE_STREAMS),
       weightKg: round(randInt(50, 20000) + rand()),
       disposalMethod: pick(DISPOSAL_METHODS),
@@ -386,7 +348,6 @@ async function main() {
       wtnReference: `WTN-${transferDate.getUTCFullYear()}-${String(i).padStart(4, "0")}`,
       transferDate,
       wtnDocumentR2Key: null,
-      ...wf,
     };
   });
   await prisma.wasteRecord.createMany({ data: wasteRows });
@@ -399,7 +360,7 @@ async function main() {
     const periodEnd = addDays(periodStart, 30);
     const readingStart = round(randInt(10000, 500000) + rand());
     const consumptionM3 = round(randInt(50, 5000) + rand());
-    const wf = workflow("WaterUsageRecord", id, siteId, periodStart);
+    logEntry("WaterUsageRecord", id, siteId, periodStart);
     return {
       id,
       siteId,
@@ -410,7 +371,6 @@ async function main() {
       source: pick(WATER_SOURCES),
       periodStart,
       periodEnd,
-      ...wf,
     };
   });
   await prisma.waterUsageRecord.createMany({ data: waterRows });
@@ -422,20 +382,16 @@ async function main() {
     const periodStart = randomDate();
     const periodEnd = addDays(periodStart, 30);
     const consumptionKwh = round(randInt(5000, 250000) + rand());
-    const peakKwh = round(consumptionKwh * (0.4 + rand() * 0.2));
-    const wf = workflow("ElectricityRecord", id, siteId, periodStart);
+    logEntry("ElectricityRecord", id, siteId, periodStart);
     return {
       id,
       siteId,
       meterId: `EM-${randInt(1, 3)}`,
       consumptionKwh,
-      peakKwh,
-      offPeakKwh: round(consumptionKwh - peakKwh),
       renewablePercent: round(rand() * 100, 1),
       supplier: pick(SUPPLIERS),
       periodStart,
       periodEnd,
-      ...wf,
     };
   });
   await prisma.electricityRecord.createMany({ data: elecRows });

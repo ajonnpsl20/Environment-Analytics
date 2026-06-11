@@ -18,7 +18,7 @@ async function loginAsAdmin(page: import("@playwright/test").Page) {
   await page.getByLabel("Email").fill("admin@envirohub.demo");
   await page.getByLabel("Password").fill(process.env.SEED_DEMO_PASSWORD ?? "");
   await page.getByRole("button", { name: "Sign in" }).click();
-  await expect(page).toHaveURL(/\/dashboard/, { timeout: 20_000 });
+  await expect(page).toHaveURL(/\/air-emissions/, { timeout: 20_000 });
 }
 
 test("waste: data table and dashboard bar chart render seeded data", async ({
@@ -31,12 +31,12 @@ test("waste: data table and dashboard bar chart render seeded data", async ({
     page.getByRole("heading", { name: "Waste", level: 2 }),
   ).toBeVisible({ timeout: 20_000 });
 
-  // Seeded approved waste records render (filter so it's deterministic).
-  await page.goto("/waste?status=APPROVED");
-  await expect(page.getByText("Approved").first()).toBeVisible();
+  // Seeded waste records render — filter by type for a deterministic assertion.
+  await page.goto("/waste?wasteType=HAZARDOUS");
+  await expect(page.getByText("Hazardous").first()).toBeVisible();
 
   await page.getByRole("tab", { name: "Dashboard" }).click();
-  await expect(page.getByText("Waste weight over time")).toBeVisible();
+  await expect(page.getByText(/waste over time/).first()).toBeVisible();
 });
 
 test("waste: new-record form reflects R2 configuration", async ({ page }) => {
@@ -74,17 +74,11 @@ test("waste: import template endpoint returns a spreadsheet", async ({ page }) =
   expect(res.headers()["content-type"]).toContain("spreadsheetml");
 });
 
-test("waste: approvals queue has a Waste tab and the connector can sync it", async ({
+test("waste: the SAP connector offers a Sync for all four metrics", async ({
   page,
 }) => {
   await loginAsAdmin(page);
 
-  // Approvals now has a populated Waste tab.
-  await page.goto("/approvals");
-  await page.getByRole("tab", { name: /Waste/ }).click();
-  await expect(page.getByRole("button", { name: "Approve" }).first()).toBeVisible();
-
-  // The SAP connector now offers a Sync for Waste (registered).
   await page.goto("/connectors");
   const syncButtons = page.getByRole("button", { name: "Sync now" });
   await expect(syncButtons).toHaveCount(4); // Air, Waste, Water, Electricity

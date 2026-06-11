@@ -20,18 +20,18 @@
     { "Site ID": "LON-003", "Stack ID": "STK-1", "Measured At": "2026-06-04", "Pollutant": "CO2", "Concentration": "12970", "Unit": "mg/m³", "Flow Rate (m³/h)": "3300", "Total Emissions": "34200", "Measurement Method": "CALCULATED", "Equipment Ref": "CEMS-330" }
   ],
   "waste": [
-    { "Site ID": "MAN-001", "Waste Type": "HAZARDOUS", "Stream": "Waste Oils", "Weight (kg)": "1240", "Disposal Method": "Treatment", "Contractor": "Veolia", "WTN Reference": "WTN-2026-5001", "Transfer Date": "2026-05-15" },
-    { "Site ID": "GLA-004", "Waste Type": "RECYCLABLE", "Stream": "Metals", "Weight (kg)": "8800", "Disposal Method": "Recycling", "Contractor": "Biffa", "WTN Reference": "WTN-2026-5002", "Transfer Date": "2026-05-16" }
+    { "Site ID": "MAN-001", "Waste Type": "HAZARDOUS", "EWC Code": "13 02 05*", "Stream": "Waste Oils", "Weight (kg)": "1240", "Disposal Method": "Treatment", "Contractor": "Veolia", "WTN Reference": "WTN-2026-5001", "Transfer Date": "2026-05-15" },
+    { "Site ID": "GLA-004", "Waste Type": "RECYCLABLE", "EWC Code": "20 01 40", "Stream": "Metals", "Weight (kg)": "8800", "Disposal Method": "Recycling", "Contractor": "Biffa", "WTN Reference": "WTN-2026-5002", "Transfer Date": "2026-05-16" }
   ],
   "water": [
     { "Site ID": "BIR-002", "Meter ID": "WM-1", "Reading Start": "184320", "Reading End": "186110", "Consumption (m³)": "1790", "Source": "MAINS", "Period Start": "2026-05-01", "Period End": "2026-05-31" },
     { "Site ID": "CAR-005", "Meter ID": "WM-2", "Reading Start": "91220", "Reading End": "92010", "Consumption (m³)": "790", "Source": "BOREHOLE", "Period Start": "2026-05-01", "Period End": "2026-05-31" }
   ],
   "electricity": [
-    { "Site ID": "MAN-001", "Meter ID": "EM-1", "Consumption (kWh)": "184200", "Peak (kWh)": "98300", "Off-Peak (kWh)": "85900", "Renewable %": "38.4", "Supplier": "EDF Energy", "Period Start": "2026-05-01", "Period End": "2026-05-31" },
-    { "Site ID": "BIR-002", "Meter ID": "EM-2", "Consumption (kWh)": "72600", "Peak (kWh)": "39100", "Off-Peak (kWh)": "33500", "Renewable %": "61.2", "Supplier": "Octopus Energy", "Period Start": "2026-05-01", "Period End": "2026-05-31" },
-    { "Site ID": "LON-003", "Meter ID": "EM-1", "Consumption (kWh)": "41800", "Peak (kWh)": "23400", "Off-Peak (kWh)": "18400", "Renewable %": "74.9", "Supplier": "SSE", "Period Start": "2026-05-01", "Period End": "2026-05-31" },
-    { "Site ID": "GLA-004", "Meter ID": "EM-3", "Consumption (kWh)": "228500", "Peak (kWh)": "121900", "Off-Peak (kWh)": "106600", "Renewable %": "29.7", "Supplier": "E.ON Next", "Period Start": "2026-05-01", "Period End": "2026-05-31" },
-    { "Site ID": "CAR-005", "Meter ID": "EM-2", "Consumption (kWh)": "63400", "Peak (kWh)": "34200", "Off-Peak (kWh)": "29200", "Renewable %": "52.1", "Supplier": "British Gas", "Period Start": "2026-05-01", "Period End": "2026-05-31" }
+    { "Site ID": "MAN-001", "Meter ID": "EM-1", "Consumption (kWh)": "184200", "Renewable %": "38.4", "Supplier": "EDF Energy", "Period Start": "2026-05-01", "Period End": "2026-05-31" },
+    { "Site ID": "BIR-002", "Meter ID": "EM-2", "Consumption (kWh)": "72600", "Renewable %": "61.2", "Supplier": "Octopus Energy", "Period Start": "2026-05-01", "Period End": "2026-05-31" },
+    { "Site ID": "LON-003", "Meter ID": "EM-1", "Consumption (kWh)": "41800", "Renewable %": "74.9", "Supplier": "SSE", "Period Start": "2026-05-01", "Period End": "2026-05-31" },
+    { "Site ID": "GLA-004", "Meter ID": "EM-3", "Consumption (kWh)": "228500", "Renewable %": "29.7", "Supplier": "E.ON Next", "Period Start": "2026-05-01", "Period End": "2026-05-31" },
+    { "Site ID": "CAR-005", "Meter ID": "EM-2", "Consumption (kWh)": "63400", "Renewable %": "52.1", "Supplier": "British Gas", "Period Start": "2026-05-01", "Period End": "2026-05-31" }
   ]
 }

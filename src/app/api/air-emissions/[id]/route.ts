@@ -21,8 +21,7 @@ export async function GET(_req: NextRequest, { params }: Context) {
   return NextResponse.json({ record });
 }
 
-// PATCH /api/air-emissions/[id] — edit a record. Approved/rejected records are
-// locked (CLAUDE.md). Editing a RETURNED record re-enters the workflow as SUBMITTED.
+// PATCH /api/air-emissions/[id] — edit a record.
 export async function PATCH(req: NextRequest, { params }: Context) {
   const result = await requireApiUser("enter_data");
   if ("response" in result) return result.response;
@@ -32,19 +31,6 @@ export async function PATCH(req: NextRequest, { params }: Context) {
   const before = await db.airEmissionRecord.findUnique({ where: { id } });
   if (!before || !(await canAccessSite(user, before.siteId))) {
     return NextResponse.json({ error: "Record not found." }, { status: 404 });
-  }
-
-  if (before.status === "APPROVED") {
-    return NextResponse.json(
-      { error: "This record is approved and locked. It can no longer be edited." },
-      { status: 403 },
-    );
-  }
-  if (before.status === "REJECTED") {
-    return NextResponse.json(
-      { error: "This record was rejected. Create a new submission instead." },
-      { status: 403 },
-    );
   }
 
   let body: unknown;
@@ -65,8 +51,6 @@ export async function PATCH(req: NextRequest, { params }: Context) {
     );
   }
 
-  const wasReturned = before.status === "RETURNED";
-
   const record = await db.airEmissionRecord.update({
     where: { id },
     data: {
@@ -80,8 +64,6 @@ export async function PATCH(req: NextRequest, { params }: Context) {
       totalEmissions: data.totalEmissions ?? null,
       measurementMethod: data.measurementMethod,
       equipmentReference: data.equipmentReference ?? null,
-      // A returned record goes back into the queue on resubmit.
-      ...(wasReturned ? { status: "SUBMITTED" } : {}),
     },
   });
 
@@ -92,7 +74,6 @@ export async function PATCH(req: NextRequest, { params }: Context) {
     userId: user.id,
     before,
     after: record,
-    notes: wasReturned ? "Resubmitted after return." : null,
   });
 
   return NextResponse.json({ record });

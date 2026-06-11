@@ -13,12 +13,12 @@ export async function GET(req: NextRequest) {
   if ("response" in result) return result.response;
 
   const sp = req.nextUrl.searchParams;
-  const filters = parseElectricityFilters((k) => sp.get(k) ?? undefined);
+  const filters = parseElectricityFilters((k) => sp.getAll(k));
   const records = await listElectricity(result.user, filters);
   return NextResponse.json({ records });
 }
 
-// POST /api/electricity — create a record (enters the workflow as SUBMITTED).
+// POST /api/electricity — create a record.
 export async function POST(req: NextRequest) {
   const result = await requireApiUser("enter_data");
   if ("response" in result) return result.response;
@@ -47,21 +47,17 @@ export async function POST(req: NextRequest) {
       siteId: data.siteId,
       meterId: data.meterId,
       consumptionKwh: data.consumptionKwh,
-      peakKwh: data.peakKwh ?? null,
-      offPeakKwh: data.offPeakKwh ?? null,
       renewablePercent: data.renewablePercent ?? null,
       supplier: data.supplier ?? null,
       periodStart: data.periodStart,
       periodEnd: data.periodEnd,
-      status: "SUBMITTED",
-      submittedById: user.id,
     },
   });
 
   await logAction({
     entityType: "ElectricityRecord",
     entityId: record.id,
-    action: "SUBMITTED",
+    action: "CREATED",
     userId: user.id,
     after: record,
   });

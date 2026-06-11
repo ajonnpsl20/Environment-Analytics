@@ -61,7 +61,7 @@ export function ConnectorsClient({ metrics }: { metrics: ConnectorMetric[] }) {
         return;
       }
       toast.success(
-        `Imported ${data.created} record${data.created === 1 ? "" : "s"} from SAP — pending review`,
+        `Imported ${data.created} record${data.created === 1 ? "" : "s"} from SAP`,
       );
       setResult({
         label: metric.label,
@@ -107,8 +107,7 @@ export function ConnectorsClient({ metrics }: { metrics: ConnectorMetric[] }) {
             <CheckCircle2 />
             <AlertTitle>Synced {result.label}</AlertTitle>
             <AlertDescription>
-              Imported {result.created} of {result.detected} record(s) — pending
-              review.
+              Imported {result.created} of {result.detected} record(s).
               {result.skipped > 0 ? ` ${result.skipped} row(s) skipped.` : ""}
             </AlertDescription>
           </Alert>

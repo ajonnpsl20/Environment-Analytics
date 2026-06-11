@@ -40,6 +40,7 @@ export type SiteOption = { id: string; name: string; siteId: string };
 const EMPTY: WasteFormValues = {
   siteId: "",
   wasteType: "NON_HAZARDOUS",
+  ewcCode: "",
   streamCategory: "",
   weightKg: "",
   disposalMethod: "",
@@ -119,6 +120,14 @@ export function WasteForm({
     startTransition(async () => {
       try {
         let wtnKey = values.wtnDocumentR2Key ?? "";
+
+        // The WTN document is required for new manual entries (when R2 is on). On
+        // edit, an existing attachment may be kept; if storage is off, it can't be
+        // enforced. The server re-checks this on create (POST /api/waste).
+        if (!recordId && r2Enabled && !file && !wtnKey) {
+          toast.error("A WTN document (PDF) is required.");
+          return;
+        }
 
         // Upload the WTN PDF first (direct to R2 via a presigned URL), if attached.
         if (r2Enabled && file) {
@@ -240,6 +249,19 @@ export function WasteForm({
         <div className="grid gap-4 sm:grid-cols-2">
           <FormField
             control={form.control}
+            name="ewcCode"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>EWC code</FormLabel>
+                <FormControl>
+                  <Input placeholder="20 03 01" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={form.control}
             name="streamCategory"
             render={({ field }) => (
               <FormItem>
@@ -310,7 +332,7 @@ export function WasteForm({
             name="wtnReference"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>WTN reference (optional)</FormLabel>
+                <FormLabel>WTN reference</FormLabel>
                 <FormControl>
                   <Input placeholder="WTN-2026-0001" {...field} />
                 </FormControl>
@@ -335,7 +357,7 @@ export function WasteForm({
 
         {/* WTN document attachment — degrades gracefully when R2 is unconfigured. */}
         <div className="space-y-1.5">
-          <FormLabel>WTN document (PDF, optional)</FormLabel>
+          <FormLabel>WTN document (PDF)</FormLabel>
           {r2Enabled ? (
             <>
               {existingKey && (

@@ -13,13 +13,11 @@ import {
 } from "../types";
 
 // Headers match the export route + the SAP feed's `electricity` block so files
-// and the connector round-trip. Peak/Off-Peak/Renewable/Supplier are optional.
+// and the connector round-trip. Renewable/Supplier are optional.
 const columns: ColumnSpec[] = [
   { header: "Site ID", field: "siteId", example: "MAN-001", siteRef: true, required: true },
   { header: "Meter ID", field: "meterId", example: "EM-1", required: true },
   { header: "Consumption (kWh)", field: "consumptionKwh", example: "128400", required: true },
-  { header: "Peak (kWh)", field: "peakKwh", example: "68200" },
-  { header: "Off-Peak (kWh)", field: "offPeakKwh", example: "60200" },
   { header: "Renewable %", field: "renewablePercent", example: "42.5" },
   { header: "Supplier", field: "supplier", example: "Octopus Energy" },
   { header: "Period Start", field: "periodStart", example: "2026-05-01", required: true },
@@ -75,23 +73,16 @@ function normalize(
   return { ok: true, data: parsed.data, siteId: parsed.data.siteId };
 }
 
-async function create(
-  input: ElectricityInput,
-  submittedById: string,
-): Promise<{ id: string }> {
+async function create(input: ElectricityInput): Promise<{ id: string }> {
   return db.electricityRecord.create({
     data: {
       siteId: input.siteId,
       meterId: input.meterId,
       consumptionKwh: input.consumptionKwh,
-      peakKwh: input.peakKwh ?? null,
-      offPeakKwh: input.offPeakKwh ?? null,
       renewablePercent: input.renewablePercent ?? null,
       supplier: input.supplier ?? null,
       periodStart: input.periodStart,
       periodEnd: input.periodEnd,
-      status: "SUBMITTED",
-      submittedById,
     },
     select: { id: true },
   });

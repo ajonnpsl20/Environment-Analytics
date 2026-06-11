@@ -14,13 +14,14 @@ export async function GET(req: NextRequest) {
 
   const sp = req.nextUrl.searchParams;
   const isCsv = sp.get("format") === "csv";
-  const filters = parseWasteFilters((k) => sp.get(k) ?? undefined);
+  const filters = parseWasteFilters((k) => sp.getAll(k));
   const records = await listWaste(result.user, filters);
 
   const rows = records.map((r) => ({
     "Site ID": r.site.siteId,
     Site: r.site.name,
     "Waste Type": r.wasteType,
+    "EWC Code": r.ewcCode,
     Stream: r.streamCategory,
     "Weight (kg)": r.weightKg,
     "Disposal Method": r.disposalMethod,
@@ -28,9 +29,6 @@ export async function GET(req: NextRequest) {
     "WTN Reference": r.wtnReference,
     "Transfer Date": format(r.transferDate, "yyyy-MM-dd"),
     "WTN Attached?": r.wtnDocumentR2Key ? "Yes" : "No",
-    Status: r.status,
-    "Submitted By": r.submittedBy.name,
-    "Approved By": r.approvedBy?.name ?? null,
   }));
 
   const date = format(new Date(), "yyyy-MM-dd");
