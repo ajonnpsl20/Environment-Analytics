@@ -7,7 +7,7 @@ import { ChartCard } from "@/components/charts/chart-card";
 import {
   BarChart,
   type BarSeries,
-  type LegendItem,
+  type XAxisGroup,
 } from "@/components/charts/bar-chart";
 import {
   WATER_SOURCES,
@@ -22,7 +22,8 @@ type ChartData = Array<Record<string, string | number | null>>;
 // only the most recent N months unless the user widens the date filter.
 const DEFAULT_MONTHS = 6;
 
-// One colour per source, reused across sites so the legend stays compact.
+// One colour per source so the (now interactive) legend stays compact and a
+// source reads consistently across every site.
 const SOURCE_COLORS: Record<WaterSourceName, string> = {
   MAINS: "var(--color-chart-1)",
   BOREHOLE: "var(--color-chart-2)",
@@ -32,62 +33,84 @@ const SOURCE_COLORS: Record<WaterSourceName, string> = {
   OTHER: "var(--color-muted-foreground)",
 };
 
-// Nested grouping: x = month; within each month one cluster per site, and within
-// each site one bar per water source. Series are ordered site-major so same-site
-// bars sit adjacent; colour encodes the source (legend = sources).
+// Short axis code from the human site id, e.g. "MAN-001" → "MAN".
+const shortCode = (siteId: string) => siteId.split("-")[0];
+
+// Two-tier layout. Each chart row is one (month, site): the inner x-axis tick is
+// the site code and the outer tier (shaded bands) is the month. Series are the
+// water sources (grouped side-by-side within a site), so the legend is the simple
+// interactive per-source one. A site shows for every month in range (0 ⇒ no bar)
+// so the month bands stay aligned.
 function buildNested(records: WaterRow[]): {
   data: ChartData;
   series: BarSeries[];
-  legendItems: LegendItem[];
+  groups: XAxisGroup[];
+  siteByRow: Record<string, string>;
+  monthByRow: Record<string, string>;
 } {
-  const byMonth = new Map<string, { label: string; sums: Map<string, number> }>();
-  const sites = new Map<string, string>();
+  // month key → (rowKey "mkey__siteId" → source → sum)
+  const byMonth = new Map<string, Map<string, Map<string, number>>>();
+  const monthLabel = new Map<string, string>();
+  const sites = new Map<string, string>(); // siteId → short code
   const sourcesPresent = new Set<WaterSourceName>();
 
   for (const r of records) {
     const mkey = format(r.periodStart, "yyyy-MM");
-    sites.set(r.site.siteId, r.site.name);
+    monthLabel.set(mkey, format(r.periodStart, "MMM yyyy"));
+    sites.set(r.site.siteId, shortCode(r.site.siteId));
     sourcesPresent.add(r.source as WaterSourceName);
 
-    let bucket = byMonth.get(mkey);
-    if (!bucket) {
-      bucket = { label: format(r.periodStart, "MMM yyyy"), sums: new Map() };
-      byMonth.set(mkey, bucket);
+    let month = byMonth.get(mkey);
+    if (!month) {
+      month = new Map();
+      byMonth.set(mkey, month);
     }
-    const seriesKey = `${r.site.siteId}__${r.source}`;
-    bucket.sums.set(seriesKey, (bucket.sums.get(seriesKey) ?? 0) + r.consumptionM3);
+    const rowKey = `${mkey}__${r.site.siteId}`;
+    let row = month.get(rowKey);
+    if (!row) {
+      row = new Map();
+      month.set(rowKey, row);
+    }
+    row.set(r.source, (row.get(r.source) ?? 0) + r.consumptionM3);
   }
 
   const recentMonths = [...byMonth.keys()].sort().slice(-DEFAULT_MONTHS);
-  const siteCodes = [...sites.keys()].sort();
+  const siteIds = [...sites.keys()].sort();
   const orderedSources = WATER_SOURCES.filter((s) => sourcesPresent.has(s));
 
-  const series: BarSeries[] = [];
-  for (const code of siteCodes) {
-    for (const src of orderedSources) {
-      series.push({
-        key: `${code}__${src}`,
-        label: `${sites.get(code)} – ${WATER_SOURCE_LABEL[src]}`,
-        color: SOURCE_COLORS[src],
-      });
-    }
-  }
-
-  const data: ChartData = recentMonths.map((mkey) => {
-    const bucket = byMonth.get(mkey)!;
-    const row: Record<string, string | number | null> = { month: bucket.label };
-    for (const s of series) {
-      row[s.key] = Math.round((bucket.sums.get(s.key) ?? 0) * 100) / 100;
-    }
-    return row;
-  });
-
-  const legendItems: LegendItem[] = orderedSources.map((src) => ({
+  const series: BarSeries[] = orderedSources.map((src) => ({
+    key: src,
     label: WATER_SOURCE_LABEL[src],
     color: SOURCE_COLORS[src],
   }));
 
-  return { data, series, legendItems };
+  const data: ChartData = [];
+  const groups: XAxisGroup[] = [];
+  const siteByRow: Record<string, string> = {};
+  const monthByRow: Record<string, string> = {};
+
+  for (const mkey of recentMonths) {
+    const month = byMonth.get(mkey)!;
+    const rowKeys = siteIds.map((id) => `${mkey}__${id}`);
+    rowKeys.forEach((rowKey, i) => {
+      const sums = month.get(rowKey);
+      const code = sites.get(siteIds[i])!;
+      siteByRow[rowKey] = code;
+      monthByRow[rowKey] = monthLabel.get(mkey)!;
+      const row: Record<string, string | number | null> = { rowKey };
+      for (const src of orderedSources) {
+        row[src] = Math.round((sums?.get(src) ?? 0) * 100) / 100;
+      }
+      data.push(row);
+    });
+    groups.push({
+      x1: rowKeys[0],
+      x2: rowKeys[rowKeys.length - 1],
+      label: monthLabel.get(mkey)!,
+    });
+  }
+
+  return { data, series, groups, siteByRow, monthByRow };
 }
 
 export function WaterDashboard({ records }: { records: WaterRow[] }) {
@@ -97,15 +120,19 @@ export function WaterDashboard({ records }: { records: WaterRow[] }) {
     <div className="grid gap-4">
       <ChartCard
         title="Water consumption by site & source"
-        description="Most recent 6 months (m³). Each month groups bars by site; within a site, one bar per source. Use the date filter to widen the range."
+        description="Most recent 6 months (m³). Months group the sites; bars within a site are coloured by source. Hover a source in the legend to isolate it."
       >
         <BarChart
           data={chart.data}
           series={chart.series}
-          xKey="month"
+          xKey="rowKey"
           unit="m³"
-          legendItems={chart.legendItems}
-          height={340}
+          height={360}
+          xTickFormatter={(rk) => chart.siteByRow[rk] ?? rk}
+          xTooltipFormatter={(rk) =>
+            `${chart.siteByRow[rk] ?? rk} · ${chart.monthByRow[rk] ?? ""}`.trim()
+          }
+          xGroups={chart.groups}
         />
       </ChartCard>
     </div>

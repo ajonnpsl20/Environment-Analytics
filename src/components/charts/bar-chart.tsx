@@ -5,6 +5,7 @@ import {
   BarChart as RechartsBarChart,
   CartesianGrid,
   Legend,
+  ReferenceArea,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -34,6 +35,11 @@ export type BarSeries = {
 };
 
 export type LegendItem = { label: string; color: string };
+
+// An outer x-axis "tier": one entry per group spanning categories x1..x2 (the
+// first/last xKey value in the group). Rendered as a shaded band behind the bars
+// with a centred label — e.g. the month grouping the per-site categories below it.
+export type XAxisGroup = { x1: string; x2: string; label: string };
 
 const CHART_COLORS = [
   "var(--color-chart-1)",
@@ -67,6 +73,9 @@ export function BarChart({
   height = 320,
   unit,
   legendItems,
+  xTickFormatter,
+  xGroups,
+  xTooltipFormatter,
 }: {
   data: Array<Record<string, string | number | null>>;
   series: BarSeries[];
@@ -77,6 +86,16 @@ export function BarChart({
   unit?: string;
   /** Compact static legend; when set it replaces the interactive per-series one. */
   legendItems?: LegendItem[];
+  /**
+   * Format the inner x-axis tick. Lets the category stay a unique `xKey` value
+   * while the tick displays something shorter (e.g. rowKey → site code). Forces
+   * every tick to render (interval 0).
+   */
+  xTickFormatter?: (value: string) => string;
+  /** Outer x-axis tier: shaded, labelled month bands grouping the inner ticks. */
+  xGroups?: XAxisGroup[];
+  /** Format the tooltip title (the hovered category) — e.g. rowKey → "MAN · Jan 2025". */
+  xTooltipFormatter?: (value: string) => string;
 }) {
   const highlight = useSeriesHighlight();
 
@@ -97,7 +116,7 @@ export function BarChart({
     <ResponsiveContainer width="100%" height={height}>
       <RechartsBarChart
         data={data}
-        margin={{ top: 8, right: 16, bottom: 8, left: 8 }}
+        margin={{ top: xGroups ? 24 : 8, right: 16, bottom: 8, left: 8 }}
       >
         <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
         <XAxis
@@ -105,6 +124,8 @@ export function BarChart({
           tick={{ fontSize: 12, fill: "var(--color-muted-foreground)" }}
           tickLine={false}
           axisLine={{ stroke: "var(--color-border)" }}
+          tickFormatter={xTickFormatter}
+          interval={xTickFormatter ? 0 : undefined}
         />
         <YAxis
           tick={{ fontSize: 12, fill: "var(--color-muted-foreground)" }}
@@ -128,6 +149,11 @@ export function BarChart({
         />
         <Tooltip
           cursor={{ fill: "var(--color-muted)", opacity: 0.4 }}
+          labelFormatter={
+            xTooltipFormatter
+              ? (label) => xTooltipFormatter(String(label))
+              : undefined
+          }
           contentStyle={{
             background: "var(--color-popover)",
             border: "1px solid var(--color-border)",
@@ -149,6 +175,28 @@ export function BarChart({
             )
           }
         />
+        {xGroups?.map((g, i) => (
+          <ReferenceArea
+            key={`grp-${g.x1}`}
+            x1={g.x1}
+            x2={g.x2}
+            // Shade alternate bands so the month groupings read clearly behind
+            // the bars; the un-shaded bands stay transparent.
+            fill={i % 2 === 1 ? "var(--color-muted)" : "transparent"}
+            fillOpacity={i % 2 === 1 ? 0.35 : 0}
+            stroke="none"
+            ifOverflow="extendDomain"
+            label={{
+              value: g.label,
+              position: "insideTop",
+              style: {
+                fontSize: 11,
+                fontWeight: 500,
+                fill: "var(--color-muted-foreground)",
+              },
+            }}
+          />
+        ))}
         {series.map((s, i) => {
           const isStacked = s.stackId != null || stacked;
           const dim = legendItems ? 1 : highlight.isDimmed(s.key) ? 0.18 : 1;

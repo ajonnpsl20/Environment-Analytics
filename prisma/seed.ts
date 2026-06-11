@@ -33,10 +33,6 @@ const round = (n: number, d = 2): number => {
   return Math.round(n * f) / f;
 };
 
-const RANGE_START = new Date("2023-01-01T00:00:00.000Z").getTime();
-const RANGE_END = new Date("2025-12-31T00:00:00.000Z").getTime();
-const randomDate = (): Date =>
-  new Date(RANGE_START + rand() * (RANGE_END - RANGE_START));
 const addDays = (d: Date, days: number): Date =>
   new Date(d.getTime() + days * 24 * 60 * 60 * 1000);
 
@@ -168,14 +164,6 @@ const CONTRACTORS = [
   "Cory",
 ] as const;
 
-const WATER_SOURCES = [
-  WaterSource.MAINS,
-  WaterSource.BOREHOLE,
-  WaterSource.RAINWATER,
-  WaterSource.SURFACE_WATER,
-  WaterSource.RECYCLED,
-] as const;
-
 const SUPPLIERS = [
   "EDF Energy",
   "E.ON Next",
@@ -183,6 +171,52 @@ const SUPPLIERS = [
   "SSE",
   "Octopus Energy",
 ] as const;
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Regular-grid configuration. Records are generated on a full (site × month ×
+// category) grid rather than scattered randomly, so every month has every site
+// and every site keeps a consistent set of sub-categories — no gaps on the
+// dashboards. Magnitudes are differentiated per site (and given gentle seasonal
+// movement) so the charts read naturally instead of flat.
+// ─────────────────────────────────────────────────────────────────────────────
+
+// First-of-month dates spanning the full demo range (2023-01 … 2025-12).
+const MONTHS: Date[] = (() => {
+  const out: Date[] = [];
+  for (let y = 2023; y <= 2025; y++) {
+    for (let m = 0; m < 12; m++) out.push(new Date(Date.UTC(y, m, 1)));
+  }
+  return out;
+})();
+
+// A jittered day within the given month so timestamps aren't all the 1st.
+const dayIn = (monthStart: Date): Date => addDays(monthStart, randInt(0, 25));
+
+// Per-site magnitude multiplier (manufacturing sites consume more; the office
+// least) — keeps the relative ordering of sites consistent across metrics.
+const SITE_SCALE: Record<string, number> = {
+  "site-manchester": 1.4,
+  "site-birmingham": 1.0,
+  "site-london": 0.55,
+  "site-glasgow": 1.25,
+  "site-cardiff": 0.85,
+};
+
+// Each site's fixed water-source mix (two each), chosen so every source type
+// appears somewhere and each site shows the same sources every month.
+const SITE_WATER_SOURCES: Record<string, readonly WaterSource[]> = {
+  "site-manchester": [WaterSource.MAINS, WaterSource.BOREHOLE],
+  "site-birmingham": [WaterSource.MAINS, WaterSource.RECYCLED],
+  "site-london": [WaterSource.MAINS, WaterSource.RAINWATER],
+  "site-glasgow": [WaterSource.MAINS, WaterSource.SURFACE_WATER],
+  "site-cardiff": [WaterSource.MAINS, WaterSource.BOREHOLE],
+};
+
+// Gentle seasonal factor (0.8…1.2) by month index, plus small per-call noise, so
+// consecutive months differ without being noisy.
+const seasonal = (monthIdx: number): number =>
+  1 + 0.2 * Math.sin((monthIdx / 12) * Math.PI * 2);
+const jitter = (): number => 0.9 + rand() * 0.2;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Generic builders
@@ -305,95 +339,121 @@ async function main() {
     ],
   });
 
-  // Air emission records (~200)
-  const airRows = Array.from({ length: 200 }, (_, i) => {
-    const id = `air-${String(i).padStart(4, "0")}`;
-    const siteId = pick(SITE_IDS);
-    const pollutant = pick(Object.keys(POLLUTANTS));
-    const [lo, hi] = POLLUTANTS[pollutant];
-    const measuredAt = randomDate();
-    logEntry("AirEmissionRecord", id, siteId, measuredAt);
-    return {
-      id,
-      siteId,
-      stackId: `STK-${randInt(1, 4)}`,
-      measuredAt,
-      pollutantType: pollutant,
-      concentration: round(lo + rand() * (hi - lo)),
-      concentrationUnit: "mg/m³",
-      flowRate: round(randInt(1000, 50000)),
-      totalEmissions: round((lo + rand() * (hi - lo)) * randInt(10, 100)),
-      measurementMethod: pick(MEASUREMENT_METHODS),
-      equipmentReference: `CEMS-${randInt(100, 999)}`,
-    };
-  });
+  // Air emission records — one per (site × month × pollutant), so every pollutant
+  // line on the dashboard is continuous across the full range.
+  const pollutantKeys = Object.keys(POLLUTANTS);
+  const airRows = SITE_IDS.flatMap((siteId) =>
+    MONTHS.flatMap((monthStart, mi) =>
+      pollutantKeys.map((pollutant) => {
+        const id = `air-${siteId.replace("site-", "")}-${mi}-${pollutant}`;
+        const [lo, hi] = POLLUTANTS[pollutant];
+        const scale = SITE_SCALE[siteId] * seasonal(mi) * jitter();
+        const concentration = round(Math.min(hi, lo + (hi - lo) * 0.5 * scale));
+        const measuredAt = dayIn(monthStart);
+        logEntry("AirEmissionRecord", id, siteId, measuredAt);
+        return {
+          id,
+          siteId,
+          stackId: `STK-${randInt(1, 4)}`,
+          measuredAt,
+          pollutantType: pollutant,
+          concentration,
+          concentrationUnit: "mg/m³",
+          flowRate: round(randInt(1000, 50000) * SITE_SCALE[siteId]),
+          totalEmissions: round(concentration * randInt(10, 100)),
+          measurementMethod: pick(MEASUREMENT_METHODS),
+          equipmentReference: `CEMS-${randInt(100, 999)}`,
+        };
+      }),
+    ),
+  );
   await prisma.airEmissionRecord.createMany({ data: airRows });
 
-  // Waste records (~150)
-  const wasteRows = Array.from({ length: 150 }, (_, i) => {
-    const id = `waste-${String(i).padStart(4, "0")}`;
-    const siteId = pick(SITE_IDS);
-    const transferDate = randomDate();
-    const wasteType = pick(WASTE_TYPES);
-    logEntry("WasteRecord", id, siteId, transferDate);
-    return {
-      id,
-      siteId,
-      wasteType,
-      ewcCode: pick(EWC_BY_TYPE[wasteType]),
-      streamCategory: pick(WASTE_STREAMS),
-      weightKg: round(randInt(50, 20000) + rand()),
-      disposalMethod: pick(DISPOSAL_METHODS),
-      contractor: pick(CONTRACTORS),
-      wtnReference: `WTN-${transferDate.getUTCFullYear()}-${String(i).padStart(4, "0")}`,
-      transferDate,
-      wtnDocumentR2Key: null,
-    };
-  });
+  // Waste records — one per (site × month × waste type), so the hazardous and
+  // non-hazardous dashboards have every site every month (recyclable in the table).
+  const wasteRows = SITE_IDS.flatMap((siteId) =>
+    MONTHS.flatMap((transferMonth, mi) =>
+      WASTE_TYPES.map((wasteType) => {
+        const id = `waste-${siteId.replace("site-", "")}-${mi}-${wasteType}`;
+        const transferDate = dayIn(transferMonth);
+        const weightKg = round(
+          randInt(2000, 18000) * SITE_SCALE[siteId] * seasonal(mi) * jitter(),
+        );
+        logEntry("WasteRecord", id, siteId, transferDate);
+        return {
+          id,
+          siteId,
+          wasteType,
+          ewcCode: pick(EWC_BY_TYPE[wasteType]),
+          streamCategory: pick(WASTE_STREAMS),
+          weightKg,
+          disposalMethod: pick(DISPOSAL_METHODS),
+          contractor: pick(CONTRACTORS),
+          wtnReference: `WTN-${transferDate.getUTCFullYear()}-${id}`,
+          transferDate,
+          wtnDocumentR2Key: null,
+        };
+      }),
+    ),
+  );
   await prisma.wasteRecord.createMany({ data: wasteRows });
 
-  // Water usage records (~120)
-  const waterRows = Array.from({ length: 120 }, (_, i) => {
-    const id = `water-${String(i).padStart(4, "0")}`;
-    const siteId = pick(SITE_IDS);
-    const periodStart = randomDate();
-    const periodEnd = addDays(periodStart, 30);
-    const readingStart = round(randInt(10000, 500000) + rand());
-    const consumptionM3 = round(randInt(50, 5000) + rand());
-    logEntry("WaterUsageRecord", id, siteId, periodStart);
-    return {
-      id,
-      siteId,
-      meterId: `WM-${randInt(1, 3)}`,
-      readingStart,
-      readingEnd: round(readingStart + consumptionM3),
-      consumptionM3,
-      source: pick(WATER_SOURCES),
-      periodStart,
-      periodEnd,
-    };
-  });
+  // Water usage records — one per (site × month × the site's fixed sources), so
+  // every month shows every site with the same source mix (no gaps).
+  let readingCursor = 100000;
+  const waterRows = SITE_IDS.flatMap((siteId) =>
+    MONTHS.flatMap((periodStart, mi) =>
+      SITE_WATER_SOURCES[siteId].map((source, si) => {
+        const id = `water-${siteId.replace("site-", "")}-${mi}-${si}`;
+        const periodEnd = addDays(periodStart, 30);
+        const consumptionM3 = round(
+          randInt(400, 4500) * SITE_SCALE[siteId] * seasonal(mi) * jitter(),
+        );
+        const readingStart = (readingCursor += consumptionM3);
+        logEntry("WaterUsageRecord", id, siteId, periodStart);
+        return {
+          id,
+          siteId,
+          meterId: `WM-${si + 1}`,
+          readingStart: round(readingStart),
+          readingEnd: round(readingStart + consumptionM3),
+          consumptionM3,
+          source,
+          periodStart,
+          periodEnd,
+        };
+      }),
+    ),
+  );
   await prisma.waterUsageRecord.createMany({ data: waterRows });
 
-  // Electricity records (~120)
-  const elecRows = Array.from({ length: 120 }, (_, i) => {
-    const id = `elec-${String(i).padStart(4, "0")}`;
-    const siteId = pick(SITE_IDS);
-    const periodStart = randomDate();
-    const periodEnd = addDays(periodStart, 30);
-    const consumptionKwh = round(randInt(5000, 250000) + rand());
-    logEntry("ElectricityRecord", id, siteId, periodStart);
-    return {
-      id,
-      siteId,
-      meterId: `EM-${randInt(1, 3)}`,
-      consumptionKwh,
-      renewablePercent: round(rand() * 100, 1),
-      supplier: pick(SUPPLIERS),
-      periodStart,
-      periodEnd,
-    };
-  });
+  // Electricity records — one per (site × month). Renewable % trends upward over
+  // time so the stacked renewable/non-renewable split shifts visibly across years.
+  const elecRows = SITE_IDS.flatMap((siteId) =>
+    MONTHS.map((periodStart, mi) => {
+      const id = `elec-${siteId.replace("site-", "")}-${mi}`;
+      const periodEnd = addDays(periodStart, 30);
+      const consumptionKwh = round(
+        randInt(40000, 220000) * SITE_SCALE[siteId] * seasonal(mi) * jitter(),
+      );
+      // 25% at the start of 2023 rising to ~75% by end of 2025, plus small noise.
+      const renewablePercent = round(
+        Math.min(95, 25 + (mi / (MONTHS.length - 1)) * 50 + (rand() * 10 - 5)),
+        1,
+      );
+      logEntry("ElectricityRecord", id, siteId, periodStart);
+      return {
+        id,
+        siteId,
+        meterId: `EM-${randInt(1, 3)}`,
+        consumptionKwh,
+        renewablePercent,
+        supplier: pick(SUPPLIERS),
+        periodStart,
+        periodEnd,
+      };
+    }),
+  );
   await prisma.electricityRecord.createMany({ data: elecRows });
 
   // Audit log (accumulated during record generation)

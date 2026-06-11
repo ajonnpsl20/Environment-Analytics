@@ -10,6 +10,10 @@ import type { WasteRow } from "./columns";
 
 type ChartData = Array<Record<string, string | number | null>>;
 
+// Dashboard-only window: show the most recent N months so the grouped bars render
+// at a readable width. The data table still reflects the full filtered range.
+const DEFAULT_MONTHS = 12;
+
 // Monthly total weight (kg) for one waste type, one grouped bar per site.
 function buildWeightBySite(records: WasteRow[]): {
   data: ChartData;
@@ -38,7 +42,8 @@ function buildWeightBySite(records: WasteRow[]): {
     label: sites.get(code)!,
   }));
 
-  const data: ChartData = [...byMonth.keys()].sort().map((key) => {
+  const recentMonths = [...byMonth.keys()].sort().slice(-DEFAULT_MONTHS);
+  const data: ChartData = recentMonths.map((key) => {
     const bucket = byMonth.get(key)!;
     const row: Record<string, string | number | null> = { month: bucket.label };
     for (const s of series) {
@@ -64,19 +69,19 @@ export function WasteDashboard({ records }: { records: WasteRow[] }) {
   );
 
   return (
-    <div className="grid gap-4 lg:grid-cols-2">
+    <div className="grid gap-4">
       {charts.map((c) => (
         <ChartCard
           key={c.type}
           title={`${WASTE_TYPE_LABEL[c.type]} waste over time`}
-          description="Total weight transferred per month (kg), one bar per site."
+          description="Most recent 12 months (kg), one bar per site. Use the date filter to widen the range."
         >
           <BarChart
             data={c.data}
             series={c.series}
             xKey="month"
             unit="kg"
-            height={280}
+            height={300}
           />
         </ChartCard>
       ))}

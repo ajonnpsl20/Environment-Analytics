@@ -35,7 +35,7 @@ export function InteractiveLegend({
   colorFor,
   highlight,
 }: {
-  series: { key: string; label: string }[];
+  series: { key: string; label: string; color?: string }[];
   colorFor: (i: number) => string;
   highlight: SeriesHighlight;
 }) {
@@ -57,7 +57,7 @@ export function InteractiveLegend({
           >
             <span
               className="size-2.5 shrink-0 rounded-[2px]"
-              style={{ background: colorFor(i) }}
+              style={{ background: s.color ?? colorFor(i) }}
             />
             <span
               className={
