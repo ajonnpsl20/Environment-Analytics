@@ -7,9 +7,11 @@ import {
 import {
   defineDescriptor,
   type ColumnSpec,
+  type ConnectorRecordRef,
   type MetricDescriptor,
   type NormalizeResult,
   type RawRow,
+  type SourceMeta,
 } from "../types";
 
 // Headers match the export route + the SAP feed's `electricity` block so files
@@ -73,7 +75,10 @@ function normalize(
   return { ok: true, data: parsed.data, siteId: parsed.data.siteId };
 }
 
-async function create(input: ElectricityInput): Promise<{ id: string }> {
+async function create(
+  input: ElectricityInput,
+  meta?: SourceMeta,
+): Promise<{ id: string }> {
   return db.electricityRecord.create({
     data: {
       siteId: input.siteId,
@@ -83,9 +88,48 @@ async function create(input: ElectricityInput): Promise<{ id: string }> {
       supplier: input.supplier ?? null,
       periodStart: input.periodStart,
       periodEnd: input.periodEnd,
+      sourceRef: meta?.sourceRef ?? null,
+      sourceHash: meta?.sourceHash ?? null,
     },
     select: { id: true },
   });
+}
+
+async function update(
+  id: string,
+  input: ElectricityInput,
+  meta: SourceMeta,
+): Promise<{ id: string }> {
+  return db.electricityRecord.update({
+    where: { id },
+    data: {
+      siteId: input.siteId,
+      meterId: input.meterId,
+      consumptionKwh: input.consumptionKwh,
+      renewablePercent: input.renewablePercent ?? null,
+      supplier: input.supplier ?? null,
+      periodStart: input.periodStart,
+      periodEnd: input.periodEnd,
+      sourceHash: meta.sourceHash,
+    },
+    select: { id: true },
+  });
+}
+
+function remove(id: string): Promise<unknown> {
+  return db.electricityRecord.delete({ where: { id } });
+}
+
+async function listConnector(): Promise<ConnectorRecordRef[]> {
+  const rows = await db.electricityRecord.findMany({
+    where: { sourceRef: { not: null } },
+    select: { id: true, sourceRef: true, sourceHash: true },
+  });
+  return rows.map((r) => ({
+    id: r.id,
+    sourceRef: r.sourceRef as string,
+    sourceHash: r.sourceHash ?? "",
+  }));
 }
 
 export const electricityDescriptor: MetricDescriptor<unknown> = defineDescriptor<
@@ -98,4 +142,7 @@ export const electricityDescriptor: MetricDescriptor<unknown> = defineDescriptor
   columns,
   normalize,
   create,
+  update,
+  remove,
+  listConnector,
 });

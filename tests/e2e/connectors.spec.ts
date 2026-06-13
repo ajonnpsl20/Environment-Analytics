@@ -40,10 +40,35 @@ test("connectors: sync imports SAP records and shows the banner", async ({
   // The persistent result banner. The sync does ~18 sequential create+audit
   // round-trips to the remote (Neon) DB; under full-suite parallel load that is
   // the slowest single action, so allow generous headroom.
-  await expect(page.getByText(/Synced Air Emissions/)).toBeVisible({
-    timeout: 45_000,
-  });
-  await expect(page.getByText(/Imported \d+ of \d+ record/)).toBeVisible();
+  // Exact match → the alert title only (the toast reads "Synced Air Emissions: …").
+  await expect(
+    page.getByText("Synced Air Emissions", { exact: true }),
+  ).toBeVisible({ timeout: 45_000 });
+  await expect(
+    page.getByText(/of \d+ record\(s\) in the feed/),
+  ).toBeVisible();
+});
+
+test("connectors: re-syncing the same feed is idempotent (no changes)", async ({
+  page,
+}) => {
+  test.setTimeout(60_000);
+  await loginAsAdmin(page);
+  await page.goto("/connectors");
+
+  // Gas is the last metric in the feed — small (5 rows), so this is quick.
+  const gasSync = page.getByRole("button", { name: "Sync now" }).last();
+
+  // First sync: creates on a fresh DB, or already a no-op if a prior run synced.
+  await gasSync.click();
+  await expect(
+    page.getByText(/of \d+ record\(s\) in the feed/),
+  ).toBeVisible({ timeout: 45_000 });
+
+  // Second sync of the identical feed → nothing changes, everything unchanged.
+  await gasSync.click();
+  await expect(page.getByText(/No changes/)).toBeVisible({ timeout: 45_000 });
+  await expect(page.getByText(/unchanged/)).toBeVisible();
 });
 
 test("connectors: data entry user does NOT see the Connectors nav item", async ({

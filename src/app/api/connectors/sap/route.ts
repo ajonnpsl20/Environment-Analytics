@@ -3,7 +3,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import { requireApiUser } from "@/lib/api";
 import { getDescriptor } from "@/lib/import/registry";
-import { commitRows } from "@/lib/import/engine";
+import { reconcileRows } from "@/lib/import/engine";
 import { getSapMetricRows } from "@/lib/import/sap-feed";
 
 // POST /api/connectors/sap?metric=<key> — mock SAP sync for one metric.
@@ -48,10 +48,21 @@ export async function POST(req: NextRequest) {
   }
 
   const rows = getSapMetricRows(metric);
-  const commit = await commitRows(descriptor, rows, systemUser, {
+  // Reconcile the feed against connector-owned records: new → IMPORTED, changed →
+  // EDITED, removed-at-source → DELETED, unchanged → no-op (no log). Manually-
+  // entered records (no sourceRef) are never touched.
+  const recon = await reconcileRows(descriptor, rows, systemUser, {
     auditUserId: user.id,
     notes: "via SAP connector (Demo)",
   });
+
+  const resultJson = {
+    created: recon.created,
+    updated: recon.updated,
+    deleted: recon.deleted,
+    unchanged: recon.unchanged,
+    skipped: recon.skipped,
+  };
 
   const syncedAt = new Date();
   await db.connectorSync.upsert({
@@ -60,21 +71,20 @@ export async function POST(req: NextRequest) {
       connectorKey: "sap",
       metricKey: metric,
       lastSyncAt: syncedAt,
-      lastCreated: commit.created,
-      lastResultJson: { created: commit.created, skipped: commit.skipped },
+      lastCreated: recon.created,
+      lastResultJson: resultJson,
     },
     update: {
       lastSyncAt: syncedAt,
-      lastCreated: commit.created,
-      lastResultJson: { created: commit.created, skipped: commit.skipped },
+      lastCreated: recon.created,
+      lastResultJson: resultJson,
     },
   });
 
   return NextResponse.json({
     metricKey: metric,
     detected: rows.length,
-    created: commit.created,
-    skipped: commit.skipped,
+    ...resultJson,
     syncedAt: syncedAt.toISOString(),
   });
 }

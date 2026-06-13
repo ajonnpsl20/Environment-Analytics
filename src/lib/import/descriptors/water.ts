@@ -4,9 +4,11 @@ import { waterSchema, type WaterInput } from "@/lib/validations/water";
 import {
   defineDescriptor,
   type ColumnSpec,
+  type ConnectorRecordRef,
   type MetricDescriptor,
   type NormalizeResult,
   type RawRow,
+  type SourceMeta,
 } from "../types";
 
 // Headers match the export route + the SAP feed's `water` block so files and the
@@ -71,7 +73,10 @@ function normalize(
   return { ok: true, data: parsed.data, siteId: parsed.data.siteId };
 }
 
-async function create(input: WaterInput): Promise<{ id: string }> {
+async function create(
+  input: WaterInput,
+  meta?: SourceMeta,
+): Promise<{ id: string }> {
   return db.waterUsageRecord.create({
     data: {
       siteId: input.siteId,
@@ -82,9 +87,49 @@ async function create(input: WaterInput): Promise<{ id: string }> {
       source: input.source,
       periodStart: input.periodStart,
       periodEnd: input.periodEnd,
+      sourceRef: meta?.sourceRef ?? null,
+      sourceHash: meta?.sourceHash ?? null,
     },
     select: { id: true },
   });
+}
+
+async function update(
+  id: string,
+  input: WaterInput,
+  meta: SourceMeta,
+): Promise<{ id: string }> {
+  return db.waterUsageRecord.update({
+    where: { id },
+    data: {
+      siteId: input.siteId,
+      meterId: input.meterId,
+      readingStart: input.readingStart,
+      readingEnd: input.readingEnd,
+      consumptionM3: input.consumptionM3,
+      source: input.source,
+      periodStart: input.periodStart,
+      periodEnd: input.periodEnd,
+      sourceHash: meta.sourceHash,
+    },
+    select: { id: true },
+  });
+}
+
+function remove(id: string): Promise<unknown> {
+  return db.waterUsageRecord.delete({ where: { id } });
+}
+
+async function listConnector(): Promise<ConnectorRecordRef[]> {
+  const rows = await db.waterUsageRecord.findMany({
+    where: { sourceRef: { not: null } },
+    select: { id: true, sourceRef: true, sourceHash: true },
+  });
+  return rows.map((r) => ({
+    id: r.id,
+    sourceRef: r.sourceRef as string,
+    sourceHash: r.sourceHash ?? "",
+  }));
 }
 
 export const waterDescriptor: MetricDescriptor<unknown> = defineDescriptor<
@@ -97,4 +142,7 @@ export const waterDescriptor: MetricDescriptor<unknown> = defineDescriptor<
   columns,
   normalize,
   create,
+  update,
+  remove,
+  listConnector,
 });

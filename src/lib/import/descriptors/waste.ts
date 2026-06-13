@@ -4,9 +4,11 @@ import { wasteSchema, type WasteInput } from "@/lib/validations/waste";
 import {
   defineDescriptor,
   type ColumnSpec,
+  type ConnectorRecordRef,
   type MetricDescriptor,
   type NormalizeResult,
   type RawRow,
+  type SourceMeta,
 } from "../types";
 
 // Headers match the export route + the SAP feed's `waste` block so files and the
@@ -72,7 +74,10 @@ function normalize(
   return { ok: true, data: parsed.data, siteId: parsed.data.siteId };
 }
 
-async function create(input: WasteInput): Promise<{ id: string }> {
+async function create(
+  input: WasteInput,
+  meta?: SourceMeta,
+): Promise<{ id: string }> {
   return db.wasteRecord.create({
     data: {
       siteId: input.siteId,
@@ -85,9 +90,50 @@ async function create(input: WasteInput): Promise<{ id: string }> {
       wtnReference: input.wtnReference,
       transferDate: input.transferDate,
       wtnDocumentR2Key: input.wtnDocumentR2Key ?? null,
+      sourceRef: meta?.sourceRef ?? null,
+      sourceHash: meta?.sourceHash ?? null,
     },
     select: { id: true },
   });
+}
+
+async function update(
+  id: string,
+  input: WasteInput,
+  meta: SourceMeta,
+): Promise<{ id: string }> {
+  return db.wasteRecord.update({
+    where: { id },
+    data: {
+      siteId: input.siteId,
+      wasteType: input.wasteType,
+      ewcCode: input.ewcCode,
+      streamCategory: input.streamCategory,
+      weightKg: input.weightKg,
+      disposalMethod: input.disposalMethod,
+      contractor: input.contractor,
+      wtnReference: input.wtnReference,
+      transferDate: input.transferDate,
+      sourceHash: meta.sourceHash,
+    },
+    select: { id: true },
+  });
+}
+
+function remove(id: string): Promise<unknown> {
+  return db.wasteRecord.delete({ where: { id } });
+}
+
+async function listConnector(): Promise<ConnectorRecordRef[]> {
+  const rows = await db.wasteRecord.findMany({
+    where: { sourceRef: { not: null } },
+    select: { id: true, sourceRef: true, sourceHash: true },
+  });
+  return rows.map((r) => ({
+    id: r.id,
+    sourceRef: r.sourceRef as string,
+    sourceHash: r.sourceHash ?? "",
+  }));
 }
 
 export const wasteDescriptor: MetricDescriptor<unknown> = defineDescriptor<
@@ -100,4 +146,7 @@ export const wasteDescriptor: MetricDescriptor<unknown> = defineDescriptor<
   columns,
   normalize,
   create,
+  update,
+  remove,
+  listConnector,
 });

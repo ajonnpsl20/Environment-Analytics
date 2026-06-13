@@ -7,9 +7,11 @@ import {
 import {
   defineDescriptor,
   type ColumnSpec,
+  type ConnectorRecordRef,
   type MetricDescriptor,
   type NormalizeResult,
   type RawRow,
+  type SourceMeta,
 } from "../types";
 
 // Headers match the export route's column headers so an exported file round-trips
@@ -81,7 +83,10 @@ function normalize(
   return { ok: true, data: parsed.data, siteId: parsed.data.siteId };
 }
 
-async function create(input: AirEmissionInput): Promise<{ id: string }> {
+async function create(
+  input: AirEmissionInput,
+  meta?: SourceMeta,
+): Promise<{ id: string }> {
   return db.airEmissionRecord.create({
     data: {
       siteId: input.siteId,
@@ -94,9 +99,51 @@ async function create(input: AirEmissionInput): Promise<{ id: string }> {
       totalEmissions: input.totalEmissions ?? null,
       measurementMethod: input.measurementMethod,
       equipmentReference: input.equipmentReference ?? null,
+      sourceRef: meta?.sourceRef ?? null,
+      sourceHash: meta?.sourceHash ?? null,
     },
     select: { id: true },
   });
+}
+
+async function update(
+  id: string,
+  input: AirEmissionInput,
+  meta: SourceMeta,
+): Promise<{ id: string }> {
+  return db.airEmissionRecord.update({
+    where: { id },
+    data: {
+      siteId: input.siteId,
+      stackId: input.stackId,
+      measuredAt: input.measuredAt,
+      pollutantType: input.pollutantType,
+      concentration: input.concentration,
+      concentrationUnit: input.concentrationUnit,
+      flowRate: input.flowRate ?? null,
+      totalEmissions: input.totalEmissions ?? null,
+      measurementMethod: input.measurementMethod,
+      equipmentReference: input.equipmentReference ?? null,
+      sourceHash: meta.sourceHash,
+    },
+    select: { id: true },
+  });
+}
+
+function remove(id: string): Promise<unknown> {
+  return db.airEmissionRecord.delete({ where: { id } });
+}
+
+async function listConnector(): Promise<ConnectorRecordRef[]> {
+  const rows = await db.airEmissionRecord.findMany({
+    where: { sourceRef: { not: null } },
+    select: { id: true, sourceRef: true, sourceHash: true },
+  });
+  return rows.map((r) => ({
+    id: r.id,
+    sourceRef: r.sourceRef as string,
+    sourceHash: r.sourceHash ?? "",
+  }));
 }
 
 export const airEmissionDescriptor: MetricDescriptor<unknown> = defineDescriptor<
@@ -109,4 +156,7 @@ export const airEmissionDescriptor: MetricDescriptor<unknown> = defineDescriptor
   columns,
   normalize,
   create,
+  update,
+  remove,
+  listConnector,
 });

@@ -51,6 +51,25 @@ export type CommitResult = {
   skippedReasons: { rowNumber: number; messages: string[] }[];
 };
 
+/** Connector provenance written on a synced record. */
+export type SourceMeta = { sourceRef: string; sourceHash: string };
+
+/** A connector-owned record's identity, for reconcile diffing. */
+export type ConnectorRecordRef = {
+  id: string;
+  sourceRef: string;
+  sourceHash: string;
+};
+
+export type ReconcileResult = {
+  created: number;
+  updated: number;
+  deleted: number;
+  unchanged: number;
+  skipped: number;
+  skippedReasons: { rowNumber: number; messages: string[] }[];
+};
+
 /**
  * Everything metric-specific. `normalize` maps a header-keyed raw row to the
  * field-keyed schema input, resolving the human Site code → Site.id cuid via the
@@ -67,7 +86,15 @@ export type MetricDescriptor<TInput> = {
     raw: RawRow,
     ctx: { siteIdByCode: Map<string, string> },
   ) => NormalizeResult<TInput>;
-  create: (input: TInput) => Promise<{ id: string }>;
+  /** Create one record. `meta` (connector sync only) stamps provenance columns. */
+  create: (input: TInput, meta?: SourceMeta) => Promise<{ id: string }>;
+  // ── Connector reconcile primitives (model-aware; the engine owns the diff) ──
+  /** Update a connector-owned record's business fields + sourceHash. */
+  update: (id: string, input: TInput, meta: SourceMeta) => Promise<{ id: string }>;
+  /** Delete a record, returning the removed row (used as the audit `before`). */
+  remove: (id: string) => Promise<unknown>;
+  /** Connector-owned records (sourceRef ≠ null) with their identity + last hash. */
+  listConnector: () => Promise<ConnectorRecordRef[]>;
 };
 
 /**

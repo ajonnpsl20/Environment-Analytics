@@ -121,6 +121,8 @@ model AirEmissionRecord {
   totalEmissions     Float?
   measurementMethod  MeasurementMethod
   equipmentReference String?
+  sourceRef          String?           @unique
+  sourceHash         String?
   createdAt          DateTime          @default(now())
   updatedAt          DateTime          @updatedAt
 
@@ -142,6 +144,8 @@ model WasteRecord {
   wtnReference     String
   transferDate     DateTime
   wtnDocumentR2Key String?
+  sourceRef        String?  @unique
+  sourceHash       String?
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
 
@@ -161,6 +165,8 @@ model WaterUsageRecord {
   source        WaterSource
   periodStart   DateTime
   periodEnd     DateTime
+  sourceRef     String?     @unique
+  sourceHash    String?
   createdAt     DateTime    @default(now())
   updatedAt     DateTime    @updatedAt
 
@@ -179,6 +185,8 @@ model ElectricityRecord {
   supplier          String?
   periodStart       DateTime
   periodEnd         DateTime
+  sourceRef         String?  @unique
+  sourceHash        String?
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
 
@@ -195,6 +203,8 @@ model GasRecord {
   consumptionM3 Float
   periodStart   DateTime
   periodEnd     DateTime
+  sourceRef     String?  @unique
+  sourceHash    String?
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 

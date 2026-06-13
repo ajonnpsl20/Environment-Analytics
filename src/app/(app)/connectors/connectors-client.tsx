@@ -36,8 +36,24 @@ type SyncResult = {
   label: string;
   detected: number;
   created: number;
+  updated: number;
+  deleted: number;
+  unchanged: number;
   skipped: number;
 };
+
+// "3 new · 2 updated · 1 removed" — only the non-zero parts; "" if nothing changed.
+function changeSummary(r: {
+  created: number;
+  updated: number;
+  deleted: number;
+}): string {
+  const parts: string[] = [];
+  if (r.created) parts.push(`${r.created} new`);
+  if (r.updated) parts.push(`${r.updated} updated`);
+  if (r.deleted) parts.push(`${r.deleted} removed`);
+  return parts.join(" · ");
+}
 
 export function ConnectorsClient({ metrics }: { metrics: ConnectorMetric[] }) {
   const router = useRouter();
@@ -60,13 +76,17 @@ export function ConnectorsClient({ metrics }: { metrics: ConnectorMetric[] }) {
         toast.error(data.error ?? "Sync failed.");
         return;
       }
+      const summary = changeSummary(data);
       toast.success(
-        `Imported ${data.created} record${data.created === 1 ? "" : "s"} from SAP`,
+        summary ? `Synced ${metric.label}: ${summary}` : `${metric.label}: no changes`,
       );
       setResult({
         label: metric.label,
         detected: data.detected,
         created: data.created,
+        updated: data.updated,
+        deleted: data.deleted,
+        unchanged: data.unchanged,
         skipped: data.skipped,
       });
       router.refresh();
@@ -107,7 +127,11 @@ export function ConnectorsClient({ metrics }: { metrics: ConnectorMetric[] }) {
             <CheckCircle2 />
             <AlertTitle>Synced {result.label}</AlertTitle>
             <AlertDescription>
-              Imported {result.created} of {result.detected} record(s).
+              {changeSummary(result) || "No changes"}
+              {result.unchanged > 0
+                ? ` · ${result.unchanged} unchanged`
+                : ""}
+              {" "}of {result.detected} record(s) in the feed.
               {result.skipped > 0 ? ` ${result.skipped} row(s) skipped.` : ""}
             </AlertDescription>
           </Alert>

@@ -4,9 +4,11 @@ import { gasSchema, type GasInput } from "@/lib/validations/gas";
 import {
   defineDescriptor,
   type ColumnSpec,
+  type ConnectorRecordRef,
   type MetricDescriptor,
   type NormalizeResult,
   type RawRow,
+  type SourceMeta,
 } from "../types";
 
 // Headers match the export route + the SAP feed's `gas` block so files and the
@@ -68,7 +70,7 @@ function normalize(
   return { ok: true, data: parsed.data, siteId: parsed.data.siteId };
 }
 
-async function create(input: GasInput): Promise<{ id: string }> {
+async function create(input: GasInput, meta?: SourceMeta): Promise<{ id: string }> {
   return db.gasRecord.create({
     data: {
       siteId: input.siteId,
@@ -76,9 +78,46 @@ async function create(input: GasInput): Promise<{ id: string }> {
       consumptionM3: input.consumptionM3,
       periodStart: input.periodStart,
       periodEnd: input.periodEnd,
+      sourceRef: meta?.sourceRef ?? null,
+      sourceHash: meta?.sourceHash ?? null,
     },
     select: { id: true },
   });
+}
+
+async function update(
+  id: string,
+  input: GasInput,
+  meta: SourceMeta,
+): Promise<{ id: string }> {
+  return db.gasRecord.update({
+    where: { id },
+    data: {
+      siteId: input.siteId,
+      meterId: input.meterId,
+      consumptionM3: input.consumptionM3,
+      periodStart: input.periodStart,
+      periodEnd: input.periodEnd,
+      sourceHash: meta.sourceHash,
+    },
+    select: { id: true },
+  });
+}
+
+function remove(id: string): Promise<unknown> {
+  return db.gasRecord.delete({ where: { id } });
+}
+
+async function listConnector(): Promise<ConnectorRecordRef[]> {
+  const rows = await db.gasRecord.findMany({
+    where: { sourceRef: { not: null } },
+    select: { id: true, sourceRef: true, sourceHash: true },
+  });
+  return rows.map((r) => ({
+    id: r.id,
+    sourceRef: r.sourceRef as string,
+    sourceHash: r.sourceHash ?? "",
+  }));
 }
 
 export const gasDescriptor: MetricDescriptor<unknown> = defineDescriptor<GasInput>({
@@ -89,4 +128,7 @@ export const gasDescriptor: MetricDescriptor<unknown> = defineDescriptor<GasInpu
   columns,
   normalize,
   create,
+  update,
+  remove,
+  listConnector,
 });
